@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>경영기획팀 업무포탈</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
 <style>
 :root{
   --nav:#1E293B; --nav-dark:#0F172A; --nav-hover:#334155; --nav-active:#2563EB;
@@ -25,6 +27,17 @@ a{text-decoration:none;color:inherit;}
 input,select,textarea{font-family:inherit;}
 ::-webkit-scrollbar{width:9px;height:9px;}
 ::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:8px;}
+/* SVG 아이콘 공통 */
+[data-icon]{display:inline-flex;align-items:center;justify-content:center;}
+svg.ic-svg{display:block;stroke-width:1.9;width:19px;height:19px;}
+.tb-icon svg.ic-svg{width:20px;height:20px;}
+.stat .ic svg.ic-svg{width:20px;height:20px;}
+.lg svg.ic-svg{width:24px;height:24px;stroke-width:2.1;}
+.login-logo .lg svg.ic-svg{width:26px;height:26px;}
+.sb-search .sicon{color:#64748B;}
+.sb-search .sicon svg.ic-svg{width:16px;height:16px;}
+.sb-logo .lg,.login-logo .lg{color:#fff;}
+.link-btn svg.ic-svg{width:15px;height:15px;stroke-width:2;}
 
 /* ===================== LOGIN ===================== */
 .login-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;
@@ -66,7 +79,7 @@ input,select,textarea{font-family:inherit;}
 .sb-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-weight:600;font-size:14px;color:#CBD5E1;margin-bottom:2px;transition:.13s;cursor:pointer;position:relative;}
 .sb-item:hover{background:var(--nav-hover);color:#fff;}
 .sb-item.on{background:var(--nav-active);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.4);}
-.sb-item .mi{font-size:17px;width:20px;text-align:center;flex:none;}
+.sb-item .mi{font-size:17px;width:20px;height:20px;flex:none;display:flex;align-items:center;justify-content:center;}
 .sb-item .badge{margin-left:auto;background:var(--blue);color:#fff;font-size:11px;font-weight:800;min-width:20px;height:20px;padding:0 6px;border-radius:20px;display:flex;align-items:center;justify-content:center;}
 .sb-item.on .badge{background:rgba(255,255,255,.25);}
 .sb-user{border-top:1px solid rgba(255,255,255,.07);padding:14px 16px;display:flex;align-items:center;gap:11px;}
@@ -302,7 +315,7 @@ body.editing .wrow .wdel{display:inline;}
 <div class="login-wrap" id="loginScreen">
   <div class="login-card">
     <div class="login-logo">
-      <span class="lg">🗂️</span>
+      <span class="lg" data-icon="logo"></span>
       <div><h1>경영기획팀 업무포탈</h1><p>Management Planning Portal</p></div>
     </div>
     <div class="login-tabs">
@@ -331,24 +344,24 @@ body.editing .wrow .wdel{display:inline;}
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sb-logo">
-      <span class="lg">🗂️</span>
+      <span class="lg" data-icon="logo"></span>
       <div><h1>경영기획팀</h1><p>업무포탈 v1.0</p></div>
     </div>
     <div class="sb-search">
-      <div class="box"><span>🔍</span><input id="searchInput" placeholder="시스템 검색..."><span class="kbd">↵</span></div>
+      <div class="box"><span class="sicon" data-icon="search"></span><input id="searchInput" placeholder="시스템 검색..."><span class="kbd">↵</span></div>
     </div>
     <nav class="sb-menu">
       <div class="sb-label">메뉴</div>
-      <div class="sb-item on" data-view="dashboard"><span class="mi">🏠</span>대시보드</div>
-      <div class="sb-item" data-view="dashboard" data-scroll="tiles"><span class="mi">🧩</span>업무 시스템<span class="badge" id="mSysCnt">0</span></div>
-      <div class="sb-item" data-view="accounts"><span class="mi">🔐</span>계정 연동<span class="badge" id="mAccCnt">0</span></div>
-      <div class="sb-item hidden" id="menuAdmin" data-view="admin"><span class="mi">🛡️</span>사용자 관리<span class="badge" id="mPendCnt" style="background:#EF4444">0</span></div>
-      <div class="sb-item" data-view="settings"><span class="mi">⚙️</span>설정</div>
+      <div class="sb-item on" data-view="dashboard"><span class="mi" data-icon="home"></span>대시보드</div>
+      <div class="sb-item" data-view="dashboard" data-scroll="tiles"><span class="mi" data-icon="grid"></span>업무 시스템<span class="badge" id="mSysCnt">0</span></div>
+      <div class="sb-item" data-view="accounts"><span class="mi" data-icon="key"></span>계정 연동<span class="badge" id="mAccCnt">0</span></div>
+      <div class="sb-item hidden" id="menuAdmin" data-view="admin"><span class="mi" data-icon="users"></span>사용자 관리<span class="badge" id="mPendCnt" style="background:#EF4444">0</span></div>
+      <div class="sb-item" data-view="settings"><span class="mi" data-icon="settings"></span>설정</div>
       <div class="sb-label">바로가기</div>
       <div id="sbQuick"></div>
     </nav>
     <div class="sb-user">
-      <button class="sb-item" id="logoutBtn" style="flex:1;color:#94A3B8"><span class="mi">⎋</span>로그아웃</button>
+      <button class="sb-item" id="logoutBtn" style="flex:1;color:#94A3B8"><span class="mi" data-icon="logout"></span>로그아웃</button>
     </div>
   </aside>
 
@@ -359,14 +372,14 @@ body.editing .wrow .wdel{display:inline;}
       <div class="crumb"><span>홈</span><span class="sep">›</span><span class="cur" id="crumbCur">대시보드</span></div>
       <div class="top-actions">
         <div class="notif-wrap">
-          <button class="tb-icon" id="notifBtn" title="알림">🔔<span class="ncount hidden" id="notifCount">0</span></button>
+          <button class="tb-icon" id="notifBtn" title="알림"><span data-icon="bell"></span><span class="ncount hidden" id="notifCount">0</span></button>
           <div class="notif-panel hidden" id="notifPanel">
             <div class="np-head"><span>알림</span><a href="#" id="notifAll">전체 보기</a></div>
             <div class="np-body" id="notifBody"></div>
           </div>
         </div>
-        <button class="tb-icon" id="helpBtn" title="도움말">❓</button>
-        <button class="tb-icon" id="settingsBtn" title="설정">⚙️</button>
+        <button class="tb-icon" id="helpBtn" title="도움말"><span data-icon="help"></span></button>
+        <button class="tb-icon" id="settingsBtn" title="설정"><span data-icon="settings"></span></button>
         <div class="tb-user" id="topUser">
           <div class="av" id="tbAv">김</div>
           <div><div class="nm" id="tbName">사용자</div><div class="rl" id="tbRole">경영기획팀</div></div>
@@ -399,7 +412,7 @@ body.editing .wrow .wdel{display:inline;}
           <h3>업무 시스템</h3>
           <span class="cnt" id="tileCnt"></span>
           <span class="sp"></span>
-          <button class="link-btn" id="editToggle">✏️ 내 포탈 편집</button>
+          <button class="link-btn" id="editToggle"><span data-icon="pencil"></span> 내 포탈 편집</button>
         </div>
         <div class="grid" id="grid"></div>
 
@@ -505,6 +518,26 @@ const DEFAULT_TILES=[
   {id:'t6',name:'탕비실 간식 주문 요청',desc:'간식주문 의견 취합',icon:'🍫',color:'#2563EB',url:'',badge:''},
 ];
 const DEFAULT_QUICK=[{name:'그룹웨어 (MOIN)',url:'https://dwp.lotte.net',color:'#2563EB'}];
+
+/* ==================== SVG 아이콘 세트 ==================== */
+const _sv=p=>'<svg class="ic-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">'+p+'</svg>';
+const IC={
+  logo:_sv('<rect x="3" y="3" width="8" height="8" rx="2.2"/><rect x="13" y="3" width="8" height="8" rx="2.2"/><rect x="3" y="13" width="8" height="8" rx="2.2"/><rect x="13" y="13" width="8" height="8" rx="2.2"/>'),
+  home:_sv('<path d="M3 10.4 12 3.2l9 7.2"/><path d="M5.5 9.4V20a1 1 0 0 0 1 1H10v-4.8h4V21h3.5a1 1 0 0 0 1-1V9.4"/>'),
+  grid:_sv('<rect x="3" y="3" width="7.5" height="7.5" rx="1.7"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.7"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.7"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.7"/>'),
+  key:_sv('<circle cx="7.5" cy="15.5" r="4"/><path d="M10.4 12.6 20 3"/><path d="m15.5 4.5 2.6 2.6"/><path d="m13 7 2.6 2.6"/>'),
+  users:_sv('<path d="M16 21v-1.6a4 4 0 0 0-4-4H6.5a4 4 0 0 0-4 4V21"/><circle cx="9.2" cy="7.6" r="3.8"/><path d="M21.5 21v-1.6a4 4 0 0 0-3-3.85"/><path d="M16.6 3.9a3.8 3.8 0 0 1 0 7.35"/>'),
+  settings:_sv('<circle cx="12" cy="12" r="3.2"/><path d="M19.5 12c0-.5-.05-.98-.14-1.45l1.98-1.5-2-3.46-2.32.96a7.4 7.4 0 0 0-2.5-1.45L14.1 2.6h-4l-.42 2.5A7.4 7.4 0 0 0 7.2 6.55l-2.33-.96-2 3.46 1.98 1.5c-.09.47-.14.95-.14 1.45s.05.98.14 1.45l-1.98 1.5 2 3.46 2.33-.96a7.4 7.4 0 0 0 2.5 1.45l.4 2.5h4l.42-2.5a7.4 7.4 0 0 0 2.5-1.45l2.32.96 2-3.46-1.98-1.5c.09-.47.14-.95.14-1.45Z"/>'),
+  logout:_sv('<path d="M9.5 21H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.5"/><path d="m16 16 4-4-4-4"/><path d="M20 12H9.5"/>'),
+  bell:_sv('<path d="M18 8.5a6 6 0 1 0-12 0c0 5.8-2.4 7.5-2.4 7.5h16.8S18 14.3 18 8.5"/><path d="M13.6 20a2 2 0 0 1-3.2 0"/>'),
+  help:_sv('<circle cx="12" cy="12" r="9.2"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5.05.9c0 1.7-2.55 2.5-2.55 2.5"/><path d="M12 17h.01"/>'),
+  search:_sv('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>'),
+  star:_sv('<path d="M12 3.6l2.65 5.4 5.95.87-4.3 4.2 1.02 5.93L12 17.1l-5.32 2.8 1.02-5.93-4.3-4.2 5.95-.87z"/>'),
+  clock:_sv('<circle cx="12" cy="12" r="9"/><path d="M12 7.6V12l3 1.8"/>'),
+  pencil:_sv('<path d="M12.5 20H21"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.75L7.5 18.2 3.5 19.3l1.05-4z"/>')
+};
+function injectIcons(root){(root||document).querySelectorAll('[data-icon]').forEach(el=>{const k=el.dataset.icon;if(IC[k]&&!el.firstElementChild)el.innerHTML=IC[k];});}
+injectIcons();
 
 /* ==================== 관리자 설정 ==================== */
 /* 관리자 이메일은 소스 노출을 막기 위해 평문이 아닌 SHA-256 해시값만 저장합니다.
@@ -645,7 +678,7 @@ function applyProfile(){
   const ini=session.name.slice(0,1);
   $('#tbAv').textContent=ini;$('#tbAv').style.background=session.color;
   $('#tbName').textContent=session.name;$('#tbRole').textContent=session.team;
-  $('#greetHi').textContent=`안녕하세요, ${session.name}님 👋`;
+  $('#greetHi').textContent=`안녕하세요, ${session.name}님`;
   const now=new Date(),days=['일','월','화','수','목','금','토'];
   $('#greetSub').textContent=`${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일 (${days[now.getDay()]}) · ${session.team}`;
   $('#loginTime').textContent=session.loginAt+' 로그인 완료';
@@ -681,14 +714,14 @@ function renderAll(){renderStats();renderTiles();renderQuick();renderRecent();}
 function renderStats(){
   const linked=Object.values(data.accounts).filter(a=>a&&a.loginId).length;
   const cards=[
-    {lbl:'연결 시스템',num:shared.tiles.length,ic:'🧩',bg:'#EFF6FF',fg:'#2563EB',foot:'업무 시스템 바로가기',view:'dashboard',scroll:'tiles'},
-    {lbl:'계정 연동',num:linked,ic:'🔐',bg:'#ECFDF5',fg:'#10B981',foot:'자동 로그인 준비',view:'accounts'},
-    {lbl:'즐겨찾기',num:data.quick.length,ic:'⭐',bg:'#FFFBEB',fg:'#F59E0B',foot:'바로가기 링크',view:'dashboard'},
-    {lbl:'최근 이용',num:data.recent.length,ic:'🕘',bg:'#F5F3FF',fg:'#8B5CF6',foot:'최근 접속한 시스템',view:'dashboard'},
+    {lbl:'연결 시스템',num:shared.tiles.length,ic:'grid',bg:'#EFF6FF',fg:'#2563EB',foot:'업무 시스템 바로가기',view:'dashboard',scroll:'tiles'},
+    {lbl:'계정 연동',num:linked,ic:'key',bg:'#ECFDF5',fg:'#10B981',foot:'자동 로그인 준비',view:'accounts'},
+    {lbl:'즐겨찾기',num:data.quick.length,ic:'star',bg:'#FFFBEB',fg:'#F59E0B',foot:'바로가기 링크',view:'dashboard'},
+    {lbl:'최근 이용',num:data.recent.length,ic:'clock',bg:'#F5F3FF',fg:'#8B5CF6',foot:'최근 접속한 시스템',view:'dashboard'},
   ];
   $('#stats').innerHTML=cards.map(c=>`
     <div class="stat" data-goview="${c.view}" ${c.scroll?`data-goscroll="${c.scroll}"`:''}>
-      <div class="top"><span class="lbl">${c.lbl}</span><span class="ic" style="background:${c.bg};color:${c.fg}">${c.ic}</span></div>
+      <div class="top"><span class="lbl">${c.lbl}</span><span class="ic" style="background:${c.bg};color:${c.fg}">${IC[c.ic]||''}</span></div>
       <div class="num">${c.num}</div>
       <div class="foot">${esc(c.foot)}</div>
     </div>`).join('');
