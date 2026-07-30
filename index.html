@@ -144,6 +144,13 @@ body.editing.admin .quick-del,body.editing.admin .quick-edit{display:inline-flex
 .view.on{display:block;}
 
 /* Greeting */
+/* 팀 미션 배너 */
+.mission{display:flex;align-items:center;gap:18px;background:#fff;border:1px solid var(--border);border-left:4px solid #E4032B;border-radius:12px;padding:14px 22px;margin-bottom:20px;box-shadow:var(--shadow);flex-wrap:wrap;}
+.mission .mtag{flex:none;display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:800;letter-spacing:1.4px;color:#E4032B;}
+.mission .mtag::before{content:"";width:7px;height:7px;border-radius:2px;background:#E4032B;transform:rotate(45deg);}
+.mission .mdiv{flex:none;width:1px;height:20px;background:var(--border);}
+.mission .mtext{flex:1;min-width:220px;font-size:14.5px;font-weight:600;color:var(--text);line-height:1.55;}
+.mission .mtext b{color:#E4032B;font-weight:800;}
 .greet{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:24px;flex-wrap:wrap;}
 .greet h2{font-size:25px;font-weight:800;letter-spacing:-.6px;}
 .greet .sub{color:var(--muted);font-size:14px;font-weight:600;margin-top:5px;}
@@ -408,6 +415,11 @@ body.editing .wrow .wdel{display:inline;}
     <div class="content">
       <!-- ===== DASHBOARD ===== -->
       <section class="view on" data-view="dashboard">
+        <div class="mission">
+          <span class="mtag">TEAM MISSION</span>
+          <span class="mdiv"></span>
+          <p class="mtext">경영지원을 넘어, 더 나은 의사결정을 이끄는 <b>'전략 파트너'</b> 역할로 조직의 성과에 기여한다.</p>
+        </div>
         <div class="greet">
           <div>
             <h2 id="greetHi">안녕하세요 👋</h2>
