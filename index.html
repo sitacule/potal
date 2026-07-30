@@ -76,6 +76,17 @@ svg.ic-svg{display:block;stroke-width:1.9;width:19px;height:19px;}
 .sb-search .kbd{font-size:10px;color:#64748B;border:1px solid #334155;border-radius:5px;padding:1px 5px;white-space:nowrap;}
 .sb-menu{flex:1;overflow-y:auto;padding:6px 12px;}
 .sb-label{font-size:10.5px;font-weight:700;color:#475569;letter-spacing:1px;text-transform:uppercase;padding:14px 10px 8px;}
+.sb-label-row{display:flex;align-items:center;justify-content:space-between;}
+.sb-add{width:22px;height:22px;border-radius:7px;color:#94A3B8;display:inline-flex;align-items:center;justify-content:center;transition:.13s;}
+.sb-add:hover{background:var(--nav-hover);color:#fff;}
+.sb-add svg.ic-svg{width:15px;height:15px;stroke-width:2.2;}
+.quick-row{display:flex;align-items:center;gap:2px;}
+.quick-row .sb-item{flex:1;min-width:0;margin-bottom:0;}
+.quick-row .sb-item .qdot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.quick-del{width:24px;height:24px;flex:none;border-radius:7px;color:#64748B;font-size:16px;display:none;align-items:center;justify-content:center;transition:.13s;}
+.quick-del:hover{background:rgba(239,68,68,.18);color:#F87171;}
+body.editing .quick-del{display:inline-flex;}
+.sb-empty{font-size:12px;color:#475569;padding:4px 12px 8px;}
 .sb-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;font-weight:600;font-size:14px;color:#CBD5E1;margin-bottom:2px;transition:.13s;cursor:pointer;position:relative;}
 .sb-item:hover{background:var(--nav-hover);color:#fff;}
 .sb-item.on{background:var(--nav-active);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.4);}
@@ -357,7 +368,7 @@ body.editing .wrow .wdel{display:inline;}
       <div class="sb-item" data-view="accounts"><span class="mi" data-icon="key"></span>계정 연동<span class="badge" id="mAccCnt">0</span></div>
       <div class="sb-item hidden" id="menuAdmin" data-view="admin"><span class="mi" data-icon="users"></span>사용자 관리<span class="badge" id="mPendCnt" style="background:#EF4444">0</span></div>
       <div class="sb-item" data-view="settings"><span class="mi" data-icon="settings"></span>설정</div>
-      <div class="sb-label">바로가기</div>
+      <div class="sb-label sb-label-row">바로가기<button class="sb-add" id="quickAdd" title="바로가기 추가"><span data-icon="plus"></span></button></div>
       <div id="sbQuick"></div>
     </nav>
     <div class="sb-user">
@@ -534,7 +545,8 @@ const IC={
   search:_sv('<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>'),
   star:_sv('<path d="M12 3.6l2.65 5.4 5.95.87-4.3 4.2 1.02 5.93L12 17.1l-5.32 2.8 1.02-5.93-4.3-4.2 5.95-.87z"/>'),
   clock:_sv('<circle cx="12" cy="12" r="9"/><path d="M12 7.6V12l3 1.8"/>'),
-  pencil:_sv('<path d="M12.5 20H21"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.75L7.5 18.2 3.5 19.3l1.05-4z"/>')
+  pencil:_sv('<path d="M12.5 20H21"/><path d="M16.4 3.6a2 2 0 0 1 2.9 2.75L7.5 18.2 3.5 19.3l1.05-4z"/>'),
+  plus:_sv('<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>')
 };
 function injectIcons(root){(root||document).querySelectorAll('[data-icon]').forEach(el=>{const k=el.dataset.icon;if(IC[k]&&!el.firstElementChild)el.innerHTML=IC[k];});}
 injectIcons();
@@ -785,15 +797,35 @@ function openSystem(t){
 
 function renderQuick(){
   const box=$('#sbQuick');box.innerHTML='';
-  data.quick.forEach(q=>{
-    const a=document.createElement('a');a.className='sb-item';a.href=q.url;a.target='_blank';
-    a.innerHTML=`<span class="mi" style="color:${q.color||'#2563EB'}">●</span>${esc(q.name)}`;
-    box.appendChild(a);
+  if(!data.quick.length){box.innerHTML='<div class="sb-empty">＋ 로 바로가기를 추가하세요</div>';return;}
+  data.quick.forEach((q,i)=>{
+    const row=document.createElement('div');row.className='quick-row';
+    row.innerHTML=`<a class="sb-item" href="${att(q.url)}" target="_blank"><span class="mi"><span class="qdot" style="background:${q.color||'#2563EB'}"></span></span>${esc(q.name)}</a>`
+      +`<button class="quick-del" data-qdel="${i}" title="삭제">×</button>`;
+    box.appendChild(row);
   });
-  if(editing){
-    const add=document.createElement('div');add.className='sb-item';add.style.color='#64748B';
-    add.innerHTML='<span class="mi">＋</span>바로가기 추가';add.onclick=addQuick;box.appendChild(add);
-  }
+  box.querySelectorAll('[data-qdel]').forEach(b=>b.onclick=()=>{const i=+b.dataset.qdel;data.quick.splice(i,1);saveData();renderQuick();renderStats();toast('바로가기를 삭제했습니다');});
+}
+$('#quickAdd').onclick=openQuickForm;
+function openQuickForm(){
+  let pick=PALETTE[data.quick.length%PALETTE.length];
+  const co=PALETTE.map(c=>`<button type="button" data-col="${c}" class="${c===pick?'sel':''}" style="background:${c}"></button>`).join('');
+  const m=modal(`
+    <div class="mh"><h3>바로가기 추가</h3><button class="x" data-close>×</button></div>
+    <div class="mb">
+      <div class="fg"><label>이름 *</label><input id="q_name" placeholder="예: 그룹웨어 (MOIN)" maxlength="20"></div>
+      <div class="fg"><label>링크(URL) *</label><input id="q_url" placeholder="https://..." value="https://"></div>
+      <div class="fg"><label>색상</label><div class="color-picker" id="q_col">${co}</div></div>
+    </div>
+    <div class="mf"><span style="flex:1"></span><button class="btn btn-ghost" data-close>취소</button><button class="btn btn-primary" data-saveq>추가</button></div>`);
+  m.querySelector('#q_col').onclick=e=>{const b=e.target.closest('[data-col]');if(!b)return;pick=b.dataset.col;m.querySelectorAll('#q_col button').forEach(x=>x.classList.toggle('sel',x===b));};
+  const nameInp=m.querySelector('#q_name');nameInp.focus();
+  m.querySelector('[data-saveq]').onclick=()=>{
+    const name=nameInp.value.trim(),url=m.querySelector('#q_url').value.trim();
+    if(!name)return toast('이름을 입력하세요');
+    if(!url||url==='https://')return toast('링크(URL)를 입력하세요');
+    data.quick.push({name,url,color:pick});saveData();renderQuick();renderStats();closeModal();toast('바로가기를 추가했습니다');
+  };
 }
 
 function renderRecent(){
@@ -820,12 +852,6 @@ function toggleEdit(){
     ? '✏️ 편집 모드 · 업무 시스템 타일 변경은 저장 즉시 전원에게 반영됩니다. 바로가기는 내 개인 설정입니다.'
     : '✏️ 편집 모드 · 내 바로가기를 편집합니다. (업무 시스템 타일은 관리자만 변경할 수 있습니다)';
   renderTiles();renderQuick();
-}
-function addQuick(){
-  const name=prompt('바로가기 이름','');if(!name)return;
-  const url=prompt('링크 URL','https://');if(!url)return;
-  data.quick.push({name:name.trim(),url:url.trim(),color:PALETTE[data.quick.length%PALETTE.length]});
-  saveData();renderQuick();renderStats();
 }
 
 $('#resetBtn').onclick=$('#resetBtn2').onclick=()=>{
