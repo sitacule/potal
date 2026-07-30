@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "tiles": [
+    { "id": "t1", "name": "업무체크리스트", "desc": "팀 업무보고 자동화", "icon": "✅", "color": "#2563EB", "url": "https://sitacule.github.io/work-checklist/", "badge": "" },
+    { "id": "t2", "name": "미전연 법카", "desc": "법인카드 영수증 관리", "icon": "💳", "color": "#EF4444", "url": "../Companycard/index.html", "badge": "" },
+    { "id": "t3", "name": "카드사용 Trace", "desc": "카드 사용내역 추적", "icon": "🧾", "color": "#DD6B20", "url": "../card/index.html", "badge": "" },
+    { "id": "t4", "name": "할일 목록", "desc": "개인 To-Do 관리", "icon": "📝", "color": "#10B981", "url": "../homework3/index.html", "badge": "" },
+    { "id": "t5", "name": "현재 상영 영화", "desc": "TMDB 영화 정보", "icon": "🎬", "color": "#8B5CF6", "url": "../homework/movies/index.html", "badge": "" },
+    { "id": "t6", "name": "간식몰", "desc": "사내 간식 주문", "icon": "🍫", "color": "#F59E0B", "url": "../snackmall/client/dist/index.html", "badge": "" }
+  ]
+}

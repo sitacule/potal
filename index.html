@@ -150,10 +150,10 @@ input,select,textarea{font-family:inherit;}
 .tile .go{position:absolute;bottom:16px;right:16px;color:var(--muted2);font-size:15px;opacity:0;transition:.15s;}
 .tile:hover .go{opacity:1;}
 .tile .tacts{position:absolute;top:12px;right:12px;display:none;gap:6px;}
-body.editing .tile{cursor:default;}
-body.editing .tile:hover{transform:none;}
-body.editing .tile .tacts{display:flex;}
-body.editing .tile .link-badge,body.editing .tile .go{display:none;}
+body.editing.admin .tile{cursor:default;}
+body.editing.admin .tile:hover{transform:none;}
+body.editing.admin .tile .tacts{display:flex;}
+body.editing.admin .tile .link-badge,body.editing.admin .tile .go{display:none;}
 .tacts button{width:27px;height:27px;border-radius:8px;font-size:13px;display:flex;align-items:center;justify-content:center;color:#fff;}
 .tacts .mv{background:var(--muted);}
 .tacts .e{background:var(--blue);}
@@ -387,8 +387,9 @@ body.editing .wrow .wdel{display:inline;}
         </div>
 
         <div class="edit-banner hidden" id="editBanner">
-          <span class="t">✏️ 편집 모드 · 내 대시보드를 자유롭게 구성하세요 (타일·일정·공지 추가/수정/삭제)</span>
+          <span class="t" id="editBannerText">✏️ 편집 모드</span>
           <div class="a">
+            <button class="btn btn-ghost btn-sm hidden" id="publishBtn">📢 공용 설정 발행</button>
             <button class="btn btn-ghost btn-sm" id="resetBtn">기본값 복원</button>
             <button class="btn btn-ghost btn-sm" id="doneEdit">완료</button>
           </div>
@@ -535,6 +536,32 @@ function loadData(uid){
 }
 function saveData(){localStorage.setItem(uData(session.uid),JSON.stringify(data));}
 
+/* ---- 공용(관리자 관리) 설정: 업무 시스템 타일 ---- */
+/* 배포된 config.json = 전원 공통. 관리자가 앱에서 편집하면 미발행 '초안'이 이 브라우저에만
+   저장되고, [공용 설정 발행]으로 config.json을 내보내 재배포하면 전원에게 반영됩니다. */
+const K_SHARED_DRAFT='portal_shared_draft';
+let shared={tiles:structuredClone(DEFAULT_DATA.tiles)};
+let sharedDirty=false;
+async function loadShared(){
+  let draft=null;
+  try{const d=localStorage.getItem(K_SHARED_DRAFT);if(d){const s=JSON.parse(d);if(s&&Array.isArray(s.tiles))draft=s;}}catch(e){}
+  let published=null;
+  try{const res=await fetch('config.json?t='+Date.now(),{cache:'no-store'});if(res.ok){const c=await res.json();if(c&&Array.isArray(c.tiles))published={tiles:c.tiles};}}catch(e){}
+  // 1) 관리자 미발행 초안이 있으면 우선(이 브라우저 한정)
+  if(draft){
+    // 배포본이 초안과 같아졌으면(=발행 완료) 초안 자동 정리
+    if(published&&JSON.stringify(published.tiles)===JSON.stringify(draft.tiles)){
+      localStorage.removeItem(K_SHARED_DRAFT);shared=published;sharedDirty=false;return;
+    }
+    shared=draft;sharedDirty=true;return;
+  }
+  // 2) 배포된 공용 설정(config.json) — 전원 공통
+  if(published){shared=published;sharedDirty=false;return;}
+  // 3) 폴백: 내장 기본값(로컬 file://에서 fetch 불가 시)
+  shared={tiles:structuredClone(DEFAULT_DATA.tiles)};sharedDirty=false;
+}
+function saveSharedDraft(){localStorage.setItem(K_SHARED_DRAFT,JSON.stringify(shared));sharedDirty=true;updatePublishBtn();}
+
 let users=getUsers(), session=null, data=null, editing=false, editIndex=-1, formPick={};
 
 /* ==================== 해시 ==================== */
@@ -605,11 +632,13 @@ function startSession(u){
   data=loadData(u.uid);
   enterApp();
 }
-function enterApp(){
+async function enterApp(){
   $('#loginScreen').classList.add('hidden');
   $('#app').classList.remove('hidden');
   $('#menuAdmin').classList.toggle('hidden',!session.isAdmin);
-  applyProfile();renderAll();
+  document.body.classList.toggle('admin',!!session.isAdmin);
+  await loadShared();
+  applyProfile();renderAll();updatePublishBtn();
   if(session.isAdmin){
     refreshPendingBadge();
     const p=pendingUsers().length;
@@ -657,7 +686,7 @@ function renderAll(){renderStats();renderTiles();renderQuick();renderSchedule();
 function renderStats(){
   const linked=Object.values(data.accounts).filter(a=>a&&a.loginId).length;
   const cards=[
-    {lbl:'연결 시스템',num:data.tiles.length,ic:'🧩',bg:'#EFF6FF',fg:'#2563EB',foot:'업무 시스템 바로가기',view:'dashboard',scroll:'tiles'},
+    {lbl:'연결 시스템',num:shared.tiles.length,ic:'🧩',bg:'#EFF6FF',fg:'#2563EB',foot:'업무 시스템 바로가기',view:'dashboard',scroll:'tiles'},
     {lbl:'계정 연동',num:linked,ic:'🔐',bg:'#ECFDF5',fg:'#10B981',foot:'자동 로그인 준비',view:'accounts'},
     {lbl:'즐겨찾기',num:data.quick.length,ic:'⭐',bg:'#FFFBEB',fg:'#F59E0B',foot:'바로가기 링크',view:'dashboard'},
     {lbl:'오늘 일정',num:data.schedule.length,ic:'📅',bg:'#F5F3FF',fg:'#8B5CF6',foot:new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric'}),view:'dashboard'},
@@ -669,15 +698,16 @@ function renderStats(){
       <div class="foot">${esc(c.foot)}</div>
     </div>`).join('');
   $$('#stats .stat').forEach(s=>s.onclick=()=>{switchView(s.dataset.goview);if(s.dataset.goscroll)setTimeout(()=>$('#grid').scrollIntoView({behavior:'smooth'}),60);});
-  $('#mSysCnt').textContent=data.tiles.length;
+  $('#mSysCnt').textContent=shared.tiles.length;
   $('#mAccCnt').textContent=linked;
-  $('#tileCnt').textContent=data.tiles.length+'개';
+  $('#tileCnt').textContent=shared.tiles.length+'개';
 }
 
 const grid=$('#grid');
 function renderTiles(){
   grid.innerHTML='';
-  data.tiles.forEach((t,i)=>{
+  const canEdit=editing&&session&&session.isAdmin; // 타일 편집은 관리자만
+  shared.tiles.forEach((t,i)=>{
     const acc=data.accounts[t.id];const linked=acc&&acc.loginId&&acc.enabled;
     const el=document.createElement('div');el.className='tile';
     el.innerHTML=`
@@ -685,21 +715,21 @@ function renderTiles(){
         ${linked?`<span class="sso">🔐 연동</span>`:''}
         ${t.badge?`<span class="badge">${esc(t.badge)}</span>`:''}
       </div>
-      <div class="tacts">
+      ${canEdit?`<div class="tacts">
         <button class="mv" data-mv="${i}" title="앞으로">◀</button>
         <button class="e" data-edit="${i}" title="수정">✎</button>
         <button class="d" data-del="${i}" title="삭제">✕</button>
-      </div>
+      </div>`:''}
       <div class="ico" style="background:${t.color}">${t.icon||'📁'}</div>
       <div style="flex:1"><div class="name">${esc(t.name)}</div><div class="desc">${esc(t.desc||'')}</div></div>
       <span class="go">→</span>`;
     el.onclick=ev=>{
-      if(editing){if(!ev.target.closest('button'))openTileForm(i);return;}
+      if(canEdit){if(!ev.target.closest('button'))openTileForm(i);return;}
       openSystem(t);
     };
     grid.appendChild(el);
   });
-  if(editing){
+  if(canEdit){
     const add=document.createElement('div');add.className='tile add';
     add.innerHTML='<div class="plus">+</div><div class="name">시스템 추가</div>';
     add.onclick=()=>openTileForm(-1);grid.appendChild(add);
@@ -707,8 +737,9 @@ function renderTiles(){
 }
 grid.addEventListener('click',e=>{
   const d=e.target.closest('[data-del]'),m=e.target.closest('[data-mv]');
-  if(d){e.stopPropagation();const i=+d.dataset.del;if(confirm(`"${data.tiles[i].name}" 삭제할까요?`)){data.tiles.splice(i,1);saveData();renderAll();toast('삭제되었습니다');}}
-  if(m){e.stopPropagation();const i=+m.dataset.mv;if(i>0){[data.tiles[i-1],data.tiles[i]]=[data.tiles[i],data.tiles[i-1]];saveData();renderTiles();}}
+  if(!(session&&session.isAdmin))return;
+  if(d){e.stopPropagation();const i=+d.dataset.del;if(confirm(`"${shared.tiles[i].name}" 삭제할까요?`)){shared.tiles.splice(i,1);saveSharedDraft();renderAll();toast('삭제되었습니다');}}
+  if(m){e.stopPropagation();const i=+m.dataset.mv;if(i>0){[shared.tiles[i-1],shared.tiles[i]]=[shared.tiles[i],shared.tiles[i-1]];saveSharedDraft();renderTiles();}}
 });
 
 function openSystem(t){
@@ -761,7 +792,7 @@ function renderNotices(){
 }
 function renderRecent(){
   const b=$('#recBody');
-  const items=data.recent.map(id=>data.tiles.find(t=>t.id===id)).filter(Boolean);
+  const items=data.recent.map(id=>shared.tiles.find(t=>t.id===id)).filter(Boolean);
   $('#recCnt').textContent=items.length+'개';
   if(!items.length){b.innerHTML='<div class="wempty">최근 이용한 시스템이 없습니다</div>';return;}
   b.innerHTML='';
@@ -778,7 +809,45 @@ $('#editToggle').onclick=toggleEdit;$('#doneEdit').onclick=toggleEdit;
 function toggleEdit(){
   editing=!editing;document.body.classList.toggle('editing',editing);
   $('#editBanner').classList.toggle('hidden',!editing);
+  const admin=session&&session.isAdmin;
+  $('#editBannerText').textContent=admin
+    ? '✏️ 편집 모드 · 업무 시스템 타일은 공용(전원 반영)입니다. 편집 후 [공용 설정 발행]을 눌러주세요. 바로가기·일정·공지는 내 개인 설정입니다.'
+    : '✏️ 편집 모드 · 내 바로가기·일정·공지를 편집합니다. (업무 시스템 타일은 관리자만 변경할 수 있습니다)';
+  updatePublishBtn();
   renderTiles();renderQuick();renderSchedule();renderNotices();
+}
+/* ---- 공용 설정 발행 ---- */
+function updatePublishBtn(){
+  const btn=$('#publishBtn');if(!btn)return;
+  const admin=session&&session.isAdmin;
+  btn.classList.toggle('hidden',!(admin&&editing));
+  btn.textContent=sharedDirty?'📢 공용 설정 발행 (변경사항 있음)':'📢 공용 설정 발행';
+  btn.classList.toggle('btn-primary',!!sharedDirty);
+  btn.classList.toggle('btn-ghost',!sharedDirty);
+}
+$('#publishBtn').onclick=publishShared;
+function publishShared(){
+  const cfg={version:Date.now(),tiles:shared.tiles};
+  const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='config.json';a.click();URL.revokeObjectURL(a.href);
+  modal(`
+    <div class="mh"><h3>📢 공용 설정 발행</h3><button class="x" data-close>×</button></div>
+    <div class="mb" style="font-size:13.5px;line-height:1.8">
+      <p><b>config.json</b> 파일이 다운로드되었습니다. 이 파일을 저장소에 반영하면 <b>모든 사용자</b>에게 새 업무 시스템 타일이 적용됩니다.</p>
+      <p style="margin-top:12px"><b>반영 방법</b></p>
+      <ol style="margin:6px 0 0 18px">
+        <li>다운로드된 <code>config.json</code>을 포탈 폴더에 덮어쓰기<br><span style="color:var(--muted);font-size:12px">C:/Users/SHIMWOOSEOK/Desktop/워크숍 실습1/potal/config.json</span></li>
+        <li>아래 명령으로 배포(푸시)</li>
+      </ol>
+      <pre style="background:var(--bg);padding:12px;border-radius:9px;font-size:12px;overflow:auto;margin-top:8px">git -C "C:/Users/SHIMWOOSEOK/Desktop/워크숍 실습1/potal" commit -am "update config" &amp;&amp; git -C "C:/Users/SHIMWOOSEOK/Desktop/워크숍 실습1/potal" push</pre>
+      <p style="margin-top:12px;color:var(--muted);font-size:12px">1~2분 뒤 <b>https://sitacule.github.io/potal/</b> 에 반영됩니다. 발행 전까지 변경사항은 관리자 화면에서만 보입니다.</p>
+    </div>
+    <div class="mf"><button class="btn btn-ghost" data-discard>변경사항(초안) 폐기</button><span style="flex:1"></span><button class="btn btn-primary" data-close>확인</button></div>`)
+    .querySelector('[data-discard]').onclick=()=>{
+      if(confirm('아직 발행하지 않은 타일 변경사항을 모두 폐기하고 현재 배포본으로 되돌립니다. 계속할까요?')){
+        localStorage.removeItem(K_SHARED_DRAFT);loadShared().then(()=>{renderAll();updatePublishBtn();closeModal();toast('배포본으로 되돌렸습니다');});
+      }
+    };
 }
 $$('.wadd').forEach(a=>a.onclick=()=>a.dataset.add==='schedule'?addSchedule():addNotice());
 function addSchedule(){
@@ -810,7 +879,7 @@ $('#resetBtn').onclick=$('#resetBtn2').onclick=()=>{
 /* ==================== 타일 폼 ==================== */
 function openTileForm(i){
   editIndex=i;
-  const t=i>=0?data.tiles[i]:{name:'',desc:'',icon:ICONS[0],color:PALETTE[0],url:'',badge:''};
+  const t=i>=0?shared.tiles[i]:{name:'',desc:'',icon:ICONS[0],color:PALETTE[0],url:'',badge:''};
   formPick={icon:t.icon||ICONS[0],color:t.color||PALETTE[0]};
   const ic=ICONS.map(x=>`<button type="button" data-ic="${x}" class="${x===formPick.icon?'sel':''}">${x}</button>`).join('');
   const co=PALETTE.map(c=>`<button type="button" data-col="${c}" class="${c===formPick.color?'sel':''}" style="background:${c}"></button>`).join('');
@@ -836,20 +905,20 @@ function openTileForm(i){
   m.querySelector('#f_col').onclick=e=>{const b=e.target.closest('[data-col]');if(!b)return;formPick.color=b.dataset.col;m.querySelectorAll('#f_col button').forEach(x=>x.classList.toggle('sel',x===b));m.querySelector('#pv_i').style.background=formPick.color;};
   m.querySelector('#f_name').oninput=e=>m.querySelector('#pv_n').textContent=e.target.value||'시스템 이름';
   m.querySelector('#f_desc').oninput=e=>m.querySelector('#pv_d').textContent=e.target.value||'설명';
-  const df=m.querySelector('[data-delf]');if(df)df.onclick=()=>{if(confirm('삭제할까요?')){data.tiles.splice(editIndex,1);saveData();renderAll();closeModal();toast('삭제되었습니다');}};
+  const df=m.querySelector('[data-delf]');if(df)df.onclick=()=>{if(confirm('삭제할까요?')){shared.tiles.splice(editIndex,1);saveSharedDraft();renderAll();closeModal();toast('삭제되었습니다');}};
   m.querySelector('[data-savef]').onclick=()=>{
     const name=m.querySelector('#f_name').value.trim(),url=m.querySelector('#f_url').value.trim();
     if(!name)return toast('이름을 입력하세요');if(!url)return toast('링크(URL)를 입력하세요');
-    const d={id:editIndex>=0?data.tiles[editIndex].id:'t'+Date.now(),name,desc:m.querySelector('#f_desc').value.trim(),icon:formPick.icon,color:formPick.color,url,badge:m.querySelector('#f_badge').value.trim()};
-    if(editIndex>=0)data.tiles[editIndex]=d;else data.tiles.push(d);
-    saveData();renderAll();closeModal();toast(editIndex>=0?'수정되었습니다':'추가되었습니다');
+    const d={id:editIndex>=0?shared.tiles[editIndex].id:'t'+Date.now(),name,desc:m.querySelector('#f_desc').value.trim(),icon:formPick.icon,color:formPick.color,url,badge:m.querySelector('#f_badge').value.trim()};
+    if(editIndex>=0)shared.tiles[editIndex]=d;else shared.tiles.push(d);
+    saveSharedDraft();renderAll();closeModal();toast(editIndex>=0?'수정되었습니다':'추가되었습니다');
   };
 }
 
 /* ==================== 계정 연동 뷰 ==================== */
 function renderAccounts(){
   const box=$('#accList');box.innerHTML='';
-  data.tiles.forEach(t=>{
+  shared.tiles.forEach(t=>{
     const acc=data.accounts[t.id]||{loginId:'',enabled:false};
     const linked=acc.loginId&&acc.enabled;
     const el=document.createElement('div');el.className='acc-item';
@@ -996,7 +1065,7 @@ function isEmail(s){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);}
 /* 검색 */
 $('#searchInput').addEventListener('keydown',e=>{
   if(e.key!=='Enter')return;const q=e.target.value.trim().toLowerCase();if(!q)return;
-  const t=data.tiles.find(x=>x.name.toLowerCase().includes(q)||(x.desc||'').toLowerCase().includes(q));
+  const t=shared.tiles.find(x=>x.name.toLowerCase().includes(q)||(x.desc||'').toLowerCase().includes(q));
   if(t){switchView('dashboard');openSystem(t);}else toast('일치하는 시스템이 없습니다');
 });
 
