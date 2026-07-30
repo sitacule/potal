@@ -164,7 +164,7 @@ body.editing.admin .tile .link-badge,body.editing.admin .tile .go{display:none;}
 .tile.add .name{font-weight:700;font-size:13px;}
 
 /* Widgets */
-.widgets{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-bottom:20px;}
+.widgets{display:grid;grid-template-columns:minmax(320px,520px);gap:18px;margin-bottom:20px;}
 .widget{background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;}
 .widget .wh{display:flex;align-items:center;gap:9px;padding:17px 20px;border-bottom:1px solid var(--border);}
 .widget .wh .wi{font-size:17px;}
@@ -406,14 +406,6 @@ body.editing .wrow .wdel{display:inline;}
         <div class="grid" id="grid"></div>
 
         <div class="widgets">
-          <div class="widget" id="wSchedule">
-            <div class="wh"><span class="wi">📅</span><h4>오늘 일정</h4><span class="wcnt" id="schCnt"></span><a class="wadd" data-add="schedule">+ 추가</a></div>
-            <div class="wb" id="schBody"></div>
-          </div>
-          <div class="widget" id="wNotice">
-            <div class="wh"><span class="wi">🔔</span><h4>공지사항</h4><span class="wcnt" id="notiCnt"></span><a class="wadd" data-add="notice">+ 추가</a></div>
-            <div class="wb" id="notiBody"></div>
-          </div>
           <div class="widget" id="wRecent">
             <div class="wh"><span class="wi">🕘</span><h4>최근 이용 시스템</h4><span class="wcnt" id="recCnt"></span></div>
             <div class="wb" id="recBody"></div>
@@ -499,15 +491,6 @@ const DEFAULT_DATA={
     {id:'t6',name:'탕비실 간식 주문 요청',desc:'간식주문 의견 취합',icon:'🍫',color:'#2563EB',url:'',badge:''},
   ],
   quick:[{name:'그룹웨어 (MOIN)',url:'https://dwp.lotte.net',color:'#2563EB'}],
-  schedule:[
-    {time:'10:00',title:'팀 주간 회의',sub:'3층 대회의실',hot:false},
-    {time:'14:00',title:'경영실적 리뷰',sub:'임원 회의실',hot:false},
-    {time:'18:00',title:'월말 보고 마감',sub:'',hot:true},
-  ],
-  notices:[
-    {icon:'📢',title:'7월 업무보고 제출 안내',sub:'~7/31까지'},
-    {icon:'🔧',title:'시스템 점검 안내',sub:'7/31 새벽 예정'},
-  ],
   accounts:{}, recent:[]
 };
 
@@ -681,7 +664,7 @@ function switchView(v){
 $('#menuToggle').onclick=()=>$('#sidebar').classList.toggle('open');
 
 /* ==================== 렌더 ==================== */
-function renderAll(){renderStats();renderTiles();renderQuick();renderSchedule();renderNotices();renderRecent();}
+function renderAll(){renderStats();renderTiles();renderQuick();renderRecent();}
 
 function renderStats(){
   const linked=Object.values(data.accounts).filter(a=>a&&a.loginId).length;
@@ -689,7 +672,7 @@ function renderStats(){
     {lbl:'연결 시스템',num:shared.tiles.length,ic:'🧩',bg:'#EFF6FF',fg:'#2563EB',foot:'업무 시스템 바로가기',view:'dashboard',scroll:'tiles'},
     {lbl:'계정 연동',num:linked,ic:'🔐',bg:'#ECFDF5',fg:'#10B981',foot:'자동 로그인 준비',view:'accounts'},
     {lbl:'즐겨찾기',num:data.quick.length,ic:'⭐',bg:'#FFFBEB',fg:'#F59E0B',foot:'바로가기 링크',view:'dashboard'},
-    {lbl:'오늘 일정',num:data.schedule.length,ic:'📅',bg:'#F5F3FF',fg:'#8B5CF6',foot:new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric'}),view:'dashboard'},
+    {lbl:'최근 이용',num:data.recent.length,ic:'🕘',bg:'#F5F3FF',fg:'#8B5CF6',foot:'최근 접속한 시스템',view:'dashboard'},
   ];
   $('#stats').innerHTML=cards.map(c=>`
     <div class="stat" data-goview="${c.view}" ${c.scroll?`data-goscroll="${c.scroll}"`:''}>
@@ -768,28 +751,6 @@ function renderQuick(){
   }
 }
 
-function renderSchedule(){
-  const b=$('#schBody');$('#schCnt').textContent=data.schedule.length+'건';
-  if(!data.schedule.length){b.innerHTML='<div class="wempty">등록된 일정이 없습니다</div>';return;}
-  b.innerHTML=data.schedule.map((s,i)=>`
-    <div class="wrow ${s.hot?'hot':''}">
-      <span class="wtime">${esc(s.time||'')}</span>
-      <div class="wmain"><div class="wt">${esc(s.title)}</div>${s.sub?`<div class="ws">${esc(s.sub)}</div>`:''}</div>
-      <button class="wdel" data-delsch="${i}">✕</button>
-    </div>`).join('');
-  b.querySelectorAll('[data-delsch]').forEach(x=>x.onclick=()=>{data.schedule.splice(+x.dataset.delsch,1);saveData();renderSchedule();renderStats();});
-}
-function renderNotices(){
-  const b=$('#notiBody');$('#notiCnt').textContent=data.notices.length+'건';
-  if(!data.notices.length){b.innerHTML='<div class="wempty">공지사항이 없습니다</div>';return;}
-  b.innerHTML=data.notices.map((n,i)=>`
-    <div class="wrow">
-      <span class="wav">${esc(n.icon||'📢')}</span>
-      <div class="wmain"><div class="wt">${esc(n.title)}</div>${n.sub?`<div class="ws">${esc(n.sub)}</div>`:''}</div>
-      <button class="wdel" data-delnoti="${i}">✕</button>
-    </div>`).join('');
-  b.querySelectorAll('[data-delnoti]').forEach(x=>x.onclick=()=>{data.notices.splice(+x.dataset.delnoti,1);saveData();renderNotices();});
-}
 function renderRecent(){
   const b=$('#recBody');
   const items=data.recent.map(id=>shared.tiles.find(t=>t.id===id)).filter(Boolean);
@@ -814,7 +775,7 @@ function toggleEdit(){
     ? '✏️ 편집 모드 · 업무 시스템 타일은 공용(전원 반영)입니다. 편집 후 [공용 설정 발행]을 눌러주세요. 바로가기·일정·공지는 내 개인 설정입니다.'
     : '✏️ 편집 모드 · 내 바로가기·일정·공지를 편집합니다. (업무 시스템 타일은 관리자만 변경할 수 있습니다)';
   updatePublishBtn();
-  renderTiles();renderQuick();renderSchedule();renderNotices();
+  renderTiles();renderQuick();
 }
 /* ---- 공용 설정 발행 ---- */
 function updatePublishBtn(){
@@ -848,20 +809,6 @@ function publishShared(){
         localStorage.removeItem(K_SHARED_DRAFT);loadShared().then(()=>{renderAll();updatePublishBtn();closeModal();toast('배포본으로 되돌렸습니다');});
       }
     };
-}
-$$('.wadd').forEach(a=>a.onclick=()=>a.dataset.add==='schedule'?addSchedule():addNotice());
-function addSchedule(){
-  const time=prompt('시간 (예: 14:00)','');if(time===null)return;
-  const title=prompt('일정 제목','');if(!title)return;
-  const sub=prompt('장소/메모 (선택)','')||'';
-  data.schedule.push({time:time.trim(),title:title.trim(),sub:sub.trim(),hot:false});
-  data.schedule.sort((a,b)=>(a.time||'').localeCompare(b.time||''));
-  saveData();renderSchedule();renderStats();
-}
-function addNotice(){
-  const title=prompt('공지 제목','');if(!title)return;
-  const sub=prompt('부가 설명 (선택)','')||'';
-  data.notices.push({icon:'📢',title:title.trim(),sub:sub.trim()});saveData();renderNotices();
 }
 function addQuick(){
   const name=prompt('바로가기 이름','');if(!name)return;
