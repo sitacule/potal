@@ -42,28 +42,11 @@ svg.ic-svg{display:block;stroke-width:1.9;width:19px;height:19px;}
 .link-btn svg.ic-svg{width:15px;height:15px;stroke-width:2;}
 
 /* ===================== LOGIN ===================== */
-.login-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden;
-  background:radial-gradient(135% 95% at 64% -12%, #5c1214 0%, #340809 44%, #140303 100%);z-index:500;}
-/* 로그인 배경 브랜딩 씬 (다크 레드 + 육각 네트워크 + LOTTE 방패) */
-.login-scene{position:absolute;inset:0;z-index:0;pointer-events:none;display:none;}
-.login-scene::before{content:"";position:absolute;left:52%;top:-8%;width:44%;height:70%;
-  background:radial-gradient(closest-side, rgba(230,60,50,.28), transparent 70%);filter:blur(6px);}
-.scene-hex{position:absolute;right:6%;top:50%;transform:translateY(-50%);width:min(560px,44vw);aspect-ratio:1;}
-.hexnet{position:absolute;inset:0;width:100%;height:100%;}
-.shield{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:118px;height:140px;display:flex;align-items:center;justify-content:center;}
-.shield svg{position:absolute;inset:0;width:100%;height:100%;}
-.shield-txt{position:relative;color:#fff;font-weight:800;font-size:22px;letter-spacing:3px;text-shadow:0 2px 12px rgba(0,0,0,.5);}
-.kw{position:absolute;color:rgba(255,228,226,.72);font-size:13px;font-weight:600;white-space:nowrap;letter-spacing:.3px;}
-.kw-rich{left:29.2%;top:13.9%;transform:translate(-100%,-50%);padding-right:16px;}
-.kw-contrib{left:91.7%;top:50%;transform:translate(14px,-50%);}
-.kw-expand{left:29.2%;top:86.1%;transform:translate(-100%,-50%);padding-right:16px;}
-.kw-life{left:76%;top:80%;color:rgba(255,150,150,.9);display:flex;align-items:center;gap:8px;}
-.kw-life i{width:7px;height:7px;border-radius:50%;background:#e0403a;box-shadow:0 0 8px rgba(224,64,58,.9);}
-.sico{position:absolute;color:rgba(255,215,213,.85);width:22px;height:22px;}
-.sico svg{width:100%;height:100%;}
-.sico-chart{left:70.8%;top:13.9%;transform:translate(10px,-150%);}
-.sico-people{left:70.8%;top:86.1%;transform:translate(10px,40%);}
-@media(min-width:920px){.login-scene{display:block;}.login-wrap{justify-content:flex-start;padding-left:7%;}}
+.login-wrap{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;overflow:hidden;z-index:500;
+  background:linear-gradient(90deg, rgba(8,5,5,.93) 0%, rgba(8,5,5,.66) 33%, rgba(10,6,6,.26) 60%, rgba(8,5,5,.5) 100%), url("bg.png") 50% 40%/cover no-repeat;}
+.login-wrap::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 200px rgba(0,0,0,.65);}
+@media(min-width:920px){.login-wrap{justify-content:flex-start;padding-left:8%;}}
+@media(max-width:919px){.login-wrap{background:linear-gradient(rgba(8,5,5,.88),rgba(8,5,5,.9)), url("bg.png") 50% 40%/cover no-repeat;}}
 .login-card{position:relative;z-index:2;background:#fff;border-radius:20px;width:min(410px,100%);padding:38px 34px;box-shadow:0 30px 90px rgba(0,0,0,.55);}
 .login-logo{display:flex;align-items:center;gap:12px;margin-bottom:26px;}
 .login-logo .lg{width:46px;height:46px;display:flex;align-items:center;justify-content:center;}
@@ -349,30 +332,6 @@ body.editing .wrow .wdel{display:inline;}
 
 <!-- ===================== LOGIN ===================== -->
 <div class="login-wrap" id="loginScreen">
-  <div class="login-scene" aria-hidden="true">
-    <div class="scene-hex">
-      <svg class="hexnet" viewBox="0 0 600 600" fill="none">
-        <polygon points="550,300 425,516.5 175,516.5 50,300 175,83.5 425,83.5" stroke="rgba(255,190,188,.24)" stroke-width="1.5"/>
-        <polygon points="480,300 390,455.9 210,455.9 120,300 210,144.1 390,144.1" stroke="rgba(255,190,188,.10)" stroke-width="1.2"/>
-        <g fill="rgba(255,170,168,.6)">
-          <circle cx="550" cy="300" r="5"/><circle cx="425" cy="516.5" r="5"/><circle cx="175" cy="516.5" r="5"/><circle cx="50" cy="300" r="5"/><circle cx="175" cy="83.5" r="5"/><circle cx="425" cy="83.5" r="5"/>
-        </g>
-        <g stroke="rgba(255,190,188,.16)" stroke-width="1" fill="none">
-          <circle cx="175" cy="83.5" r="16"/><circle cx="175" cy="516.5" r="16"/><circle cx="425" cy="83.5" r="12"/><circle cx="425" cy="516.5" r="12"/>
-        </g>
-      </svg>
-      <div class="shield">
-        <svg viewBox="0 0 120 142" fill="none"><path d="M60 6 L110 23 V72 C110 106 87 126 60 136 C33 126 10 106 10 72 V23 Z" stroke="rgba(242,228,228,.82)" stroke-width="2.4"/></svg>
-        <span class="shield-txt">LOTTE</span>
-      </div>
-      <span class="kw kw-rich">Richness</span>
-      <span class="kw kw-contrib">Contribute</span>
-      <span class="kw kw-expand">Expansion</span>
-      <span class="kw kw-life"><i></i>Lifetime Value Creator</span>
-      <span class="sico sico-chart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M17 7h4v4"/></svg></span>
-      <span class="sico sico-people"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17.5" cy="9.5" r="2.2"/><path d="M16 20a5 5 0 0 1 6.2-4.8"/></svg></span>
-    </div>
-  </div>
   <div class="login-card">
     <div class="login-logo">
       <span class="lg" data-icon="logo"></span>
