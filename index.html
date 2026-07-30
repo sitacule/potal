@@ -323,7 +323,7 @@ body.editing .wrow .wdel{display:inline;}
       <div class="lf"><label>비밀번호</label><input id="su_pw" type="password" autocomplete="new-password" placeholder="비밀번호"></div>
       <button class="login-btn" type="submit">가입하고 시작하기</button>
     </form>
-    <div class="login-foot">계정 정보는 이 브라우저에만 로컬 저장됩니다 (데모).<br>실제 운영 시 회사 SSO/인증 서버와 연동합니다.</div>
+    <div class="login-foot">계정·설정은 Firebase 클라우드에 안전하게 저장되어<br>어느 PC·브라우저에서 로그인해도 동일하게 표시됩니다.</div>
   </div>
 </div>
 
@@ -389,7 +389,6 @@ body.editing .wrow .wdel{display:inline;}
         <div class="edit-banner hidden" id="editBanner">
           <span class="t" id="editBannerText">✏️ 편집 모드</span>
           <div class="a">
-            <button class="btn btn-ghost btn-sm hidden" id="publishBtn">📢 공용 설정 발행</button>
             <button class="btn btn-ghost btn-sm" id="resetBtn">기본값 복원</button>
             <button class="btn btn-ghost btn-sm" id="doneEdit">완료</button>
           </div>
@@ -476,23 +475,37 @@ body.editing .wrow .wdel{display:inline;}
 <input type="file" id="fileInput" accept="application/json" class="hidden">
 <div class="toast" id="toast"></div>
 
-<script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+/* ==================== Firebase 초기화 ==================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyC8PPFfTuAvlfy80Kf3NewkvJUmCS6k3po",
+  authDomain: "potal-49183.firebaseapp.com",
+  projectId: "potal-49183",
+  storageBucket: "potal-49183.firebasestorage.app",
+  messagingSenderId: "485482938691",
+  appId: "1:485482938691:web:2bad715e2eddef9ad16ff6",
+  measurementId: "G-XRQ50VEYZ7"
+};
+const fbApp = initializeApp(firebaseConfig);
+const auth = getAuth(fbApp);
+const db = getFirestore(fbApp);
+
 /* ==================== 상수/기본값 ==================== */
 const PALETTE=['#2563EB','#1E293B','#EF4444','#10B981','#F59E0B','#8B5CF6','#EC4899','#0D9488','#DD6B20','#3B82F6','#64748B','#059669'];
 const ICONS=['📋','✅','💳','🧾','📝','🎬','🍫','📊','📈','📁','📧','🗓️','👥','💰','🏢','🔧','📎','🔔','🌐','📌','💼','🎯','🧮','📦'];
-
-const DEFAULT_DATA={
-  tiles:[
-    {id:'t1',name:'Work Trace',desc:'팀 업무보고 자동화',icon:'✅',color:'#2563EB',url:'https://mpteam.vercel.app/',badge:''},
-    {id:'t2',name:'HR 주요업무 현황',desc:'보고',icon:'📋',color:'#F59E0B',url:'https://hr-project-master.vercel.app/home',badge:''},
-    {id:'t3',name:'자산 관리',desc:'사내 시설물, 집기 관리',icon:'📦',color:'#8B5CF6',url:'https://asset-lookup-ruby.vercel.app/home',badge:''},
-    {id:'t4',name:'카드사용 Trace',desc:'카드 사용내역 추적',icon:'🧾',color:'#DD6B20',url:'https://sitacule.github.io/card/',badge:''},
-    {id:'t5',name:'재무 대시보드',desc:'재무현황',icon:'📊',color:'#2563EB',url:'',badge:''},
-    {id:'t6',name:'탕비실 간식 주문 요청',desc:'간식주문 의견 취합',icon:'🍫',color:'#2563EB',url:'',badge:''},
-  ],
-  quick:[{name:'그룹웨어 (MOIN)',url:'https://dwp.lotte.net',color:'#2563EB'}],
-  accounts:{}, recent:[]
-};
+const DEFAULT_TILES=[
+  {id:'t1',name:'Work Trace',desc:'팀 업무보고 자동화',icon:'✅',color:'#2563EB',url:'https://mpteam.vercel.app/',badge:''},
+  {id:'t2',name:'HR 주요업무 현황',desc:'보고',icon:'📋',color:'#F59E0B',url:'https://hr-project-master.vercel.app/home',badge:''},
+  {id:'t3',name:'자산 관리',desc:'사내 시설물, 집기 관리',icon:'📦',color:'#8B5CF6',url:'https://asset-lookup-ruby.vercel.app/home',badge:''},
+  {id:'t4',name:'카드사용 Trace',desc:'카드 사용내역 추적',icon:'🧾',color:'#DD6B20',url:'https://sitacule.github.io/card/',badge:''},
+  {id:'t5',name:'재무 대시보드',desc:'재무현황',icon:'📊',color:'#2563EB',url:'',badge:''},
+  {id:'t6',name:'탕비실 간식 주문 요청',desc:'간식주문 의견 취합',icon:'🍫',color:'#2563EB',url:'',badge:''},
+];
+const DEFAULT_QUICK=[{name:'그룹웨어 (MOIN)',url:'https://dwp.lotte.net',color:'#2563EB'}];
 
 /* ==================== 관리자 설정 ==================== */
 /* 관리자 이메일은 소스 노출을 막기 위해 평문이 아닌 SHA-256 해시값만 저장합니다.
@@ -508,55 +521,42 @@ async function isAdminEmail(email){
   return !!h&&ADMIN_EMAIL_HASHES.includes(h);
 }
 
-/* ==================== 저장소 ==================== */
-const K_USERS='portal_users', K_SESSION='portal_session';
-const uData=uid=>'portal_u_'+uid;
-function getUsers(){try{return JSON.parse(localStorage.getItem(K_USERS))||[]}catch(e){return[]}}
-function setUsers(u){localStorage.setItem(K_USERS,JSON.stringify(u));}
-function loadData(uid){
-  try{const raw=localStorage.getItem(uData(uid));if(raw)return{...structuredClone(DEFAULT_DATA),...JSON.parse(raw)};}catch(e){}
-  return structuredClone(DEFAULT_DATA);
-}
-function saveData(){localStorage.setItem(uData(session.uid),JSON.stringify(data));}
+/* ==================== 상태 ==================== */
+let session=null, data=null, shared={tiles:[]}, allUsers=[], editing=false, editIndex=-1, formPick={}, duringSignup=false;
 
-/* ---- 공용(관리자 관리) 설정: 업무 시스템 타일 ---- */
-/* 배포된 config.json = 전원 공통. 관리자가 앱에서 편집하면 미발행 '초안'이 이 브라우저에만
-   저장되고, [공용 설정 발행]으로 config.json을 내보내 재배포하면 전원에게 반영됩니다. */
-const K_SHARED_DRAFT='portal_shared_draft';
-let shared={tiles:structuredClone(DEFAULT_DATA.tiles)};
-let sharedDirty=false;
+/* ==================== Firestore 데이터 계층 ==================== */
+function colorFor(email){let h=0;const s=String(email||'');for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return PALETTE[h%PALETTE.length];}
+
+/* 공용 업무 시스템 타일 (config/shared) — 전원 공통 */
 async function loadShared(){
-  let draft=null;
-  try{const d=localStorage.getItem(K_SHARED_DRAFT);if(d){const s=JSON.parse(d);if(s&&Array.isArray(s.tiles))draft=s;}}catch(e){}
-  let published=null;
-  try{const res=await fetch('config.json?t='+Date.now(),{cache:'no-store'});if(res.ok){const c=await res.json();if(c&&Array.isArray(c.tiles))published={tiles:c.tiles};}}catch(e){}
-  // 1) 관리자 미발행 초안이 있으면 우선(이 브라우저 한정)
-  if(draft){
-    // 배포본이 초안과 같아졌으면(=발행 완료) 초안 자동 정리
-    if(published&&JSON.stringify(published.tiles)===JSON.stringify(draft.tiles)){
-      localStorage.removeItem(K_SHARED_DRAFT);shared=published;sharedDirty=false;return;
-    }
-    shared=draft;sharedDirty=true;return;
-  }
-  // 2) 배포된 공용 설정(config.json) — 전원 공통
-  if(published){shared=published;sharedDirty=false;return;}
-  // 3) 폴백: 내장 기본값(로컬 file://에서 fetch 불가 시)
-  shared={tiles:structuredClone(DEFAULT_DATA.tiles)};sharedDirty=false;
+  try{
+    const snap=await getDoc(doc(db,'config','shared'));
+    if(snap.exists()&&Array.isArray(snap.data().tiles)){shared={tiles:snap.data().tiles};return;}
+    shared={tiles:structuredClone(DEFAULT_TILES)};
+    if(session&&session.isAdmin){try{await setDoc(doc(db,'config','shared'),{tiles:shared.tiles,updatedAt:serverTimestamp()});}catch(e){}}
+  }catch(e){shared={tiles:structuredClone(DEFAULT_TILES)};}
 }
-function saveSharedDraft(){localStorage.setItem(K_SHARED_DRAFT,JSON.stringify(shared));sharedDirty=true;updatePublishBtn();}
-
-let users=getUsers(), session=null, data=null, editing=false, editIndex=-1, formPick={};
-
-/* ==================== 해시 ==================== */
-async function hashPw(pw,salt){
-  const str=salt+'::'+pw;
-  if(window.crypto&&crypto.subtle){
-    try{const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
-      return[...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('');}catch(e){}
-  }
-  let h=5381;for(let i=0;i<str.length;i++)h=((h<<5)+h+str.charCodeAt(i))>>>0;return 'f'+h.toString(16);
+async function saveShared(){
+  try{await setDoc(doc(db,'config','shared'),{tiles:shared.tiles,updatedAt:serverTimestamp()});return true;}
+  catch(e){toast('공용 설정 저장 실패 (관리자 권한/규칙 확인)');return false;}
 }
-function rndSalt(){const a=new Uint8Array(8);(window.crypto||{getRandomValues:x=>x}).getRandomValues?.(a);return[...a].map(b=>b.toString(16).padStart(2,'0')).join('')||('s'+performance.now());}
+
+/* 개인 설정 (userdata/{uid}) */
+async function loadData(){
+  try{
+    const snap=await getDoc(doc(db,'userdata',session.uid));
+    if(snap.exists()){const d=snap.data();data={quick:Array.isArray(d.quick)?d.quick:structuredClone(DEFAULT_QUICK),accounts:d.accounts||{},recent:Array.isArray(d.recent)?d.recent:[]};return;}
+  }catch(e){}
+  data={quick:structuredClone(DEFAULT_QUICK),accounts:{},recent:[]};
+}
+function saveData(){if(!session)return;setDoc(doc(db,'userdata',session.uid),{quick:data.quick,accounts:data.accounts,recent:data.recent}).catch(()=>{});}
+
+/* 전체 사용자 목록 (users) — 관리자 전용 */
+async function refreshUsers(){
+  if(!(session&&session.isAdmin)){allUsers=[];return;}
+  try{const qs=await getDocs(collection(db,'users'));allUsers=qs.docs.map(d=>({uid:d.id,id:d.data().email,...d.data()}));}catch(e){allUsers=[];}
+  refreshPendingBadge();
+}
 
 /* ==================== 로그인 ==================== */
 const $=s=>document.querySelector(s);const $$=s=>document.querySelectorAll(s);
@@ -569,64 +569,77 @@ function switchAuth(login){
 }
 function authErr(m,ok){const e=$('#loginErr');e.textContent=m;e.classList.remove('hidden');e.classList.toggle('ok',!!ok);}
 
+function mapAuthError(code){
+  return {
+    'auth/invalid-email':'올바른 이메일 형식이 아닙니다.',
+    'auth/email-already-in-use':'이미 가입된 이메일입니다.',
+    'auth/weak-password':'비밀번호는 6자 이상이어야 합니다.',
+    'auth/invalid-credential':'이메일 또는 비밀번호가 일치하지 않습니다.',
+    'auth/user-not-found':'등록되지 않은 이메일입니다.',
+    'auth/wrong-password':'비밀번호가 일치하지 않습니다.',
+    'auth/too-many-requests':'시도가 너무 많습니다. 잠시 후 다시 시도하세요.',
+    'auth/network-request-failed':'네트워크 오류입니다. 연결을 확인하세요.'
+  }[code]||('오류가 발생했습니다 ('+(code||'unknown')+')');
+}
 $('#formSignup').onsubmit=async ev=>{
   ev.preventDefault();
-  const name=$('#su_name').value.trim(),team='경영기획팀',
-        id=$('#su_id').value.trim(),pw=$('#su_pw').value;
+  const name=$('#su_name').value.trim(),team='경영기획팀',id=$('#su_id').value.trim().toLowerCase(),pw=$('#su_pw').value;
   if(!name||!id||!pw)return authErr('이름·회사 이메일·비밀번호를 모두 입력하세요.');
   if(!isEmail(id))return authErr('올바른 회사 이메일 주소를 입력하세요.');
-  users=getUsers();
-  if(users.some(u=>u.id.toLowerCase()===id.toLowerCase()))return authErr('이미 가입된 이메일입니다.');
-  const salt=rndSalt(),hash=await hashPw(pw,salt);
-  const uid='u'+Date.now();
-  const admin=await isAdminEmail(id);
-  const status=admin?'approved':'pending';
-  const color=PALETTE[users.length%PALETTE.length];
-  users.push({uid,id,name,team,role:admin?'admin':'member',pinned:admin,status,salt,hash,color,createdAt:new Date().toISOString()});
-  setUsers(users);
-  if(admin){
-    startSession(users[users.length-1]);
-  }else{
-    $('#formSignup').reset();
-    switchAuth(true);
-    $('#li_id').value=id;
-    authErr('✅ 가입 신청이 접수되었습니다. 관리자 승인 후 로그인할 수 있습니다.',true);
-  }
+  const btn=ev.submitter;if(btn)btn.disabled=true;
+  duringSignup=true;
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,id,pw);
+    const admin=await isAdminEmail(id);
+    await setDoc(doc(db,'users',cred.user.uid),{email:id,name,team,role:admin?'admin':'member',status:admin?'approved':'pending',color:colorFor(id),createdAt:serverTimestamp()});
+    await setDoc(doc(db,'userdata',cred.user.uid),{quick:structuredClone(DEFAULT_QUICK),accounts:{},recent:[]});
+    if(admin){
+      session={uid:cred.user.uid,id,name,team,role:'admin',isAdmin:true,color:colorFor(id),loginAt:nowTime()};
+      await enterApp();
+    }else{
+      await signOut(auth);
+      $('#formSignup').reset();switchAuth(true);$('#li_id').value=id;
+      authErr('✅ 가입 신청이 접수되었습니다. 관리자 승인 후 로그인할 수 있습니다.',true);
+    }
+  }catch(e){authErr(mapAuthError(e.code));}
+  finally{duringSignup=false;if(btn)btn.disabled=false;}
 };
 $('#formLogin').onsubmit=async ev=>{
   ev.preventDefault();
-  const id=$('#li_id').value.trim(),pw=$('#li_pw').value;
+  const id=$('#li_id').value.trim().toLowerCase(),pw=$('#li_pw').value;
   if(!id||!pw)return authErr('회사 이메일과 비밀번호를 입력하세요.');
-  users=getUsers();
-  const u=users.find(x=>x.id.toLowerCase()===id.toLowerCase());
-  if(!u)return authErr('등록되지 않은 이메일입니다. 회원가입을 먼저 진행하세요.');
-  const hash=await hashPw(pw,u.salt);
-  if(hash!==u.hash)return authErr('비밀번호가 일치하지 않습니다.');
-  const st=u.status||'approved';
-  if(st==='pending')return authErr('아직 승인 대기 중입니다. 관리자 승인 후 이용할 수 있습니다.');
-  if(st==='rejected')return authErr('가입이 거절된 계정입니다. 관리자에게 문의하세요.');
-  startSession(u);
+  const btn=ev.submitter;if(btn)btn.disabled=true;
+  try{await signInWithEmailAndPassword(auth,id,pw);}   /* 승인 여부는 onAuthStateChanged에서 확인 */
+  catch(e){authErr(mapAuthError(e.code));}
+  finally{if(btn)btn.disabled=false;}
 };
-function startSession(u){
-  const isAdmin=u.role==='admin';
-  session={uid:u.uid,id:u.id,name:u.name,team:u.team,role:u.role,isAdmin,color:u.color,
-    loginAt:new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})};
-  localStorage.setItem(K_SESSION,JSON.stringify(session));
-  data=loadData(u.uid);
-  enterApp();
-}
+
+/* 인증 상태 감시 — 앱 진입의 단일 관문 */
+onAuthStateChanged(auth,async user=>{
+  if(duringSignup)return;                       /* 가입 처리 중엔 가입 핸들러가 담당 */
+  if(!user){showLogin();return;}
+  let snap;
+  try{snap=await getDoc(doc(db,'users',user.uid));}
+  catch(e){await signOut(auth);showLogin();authErr('데이터 접근 오류입니다. Firestore 보안 규칙을 확인하세요.');return;}
+  if(!snap.exists()){await signOut(auth);showLogin();return;}
+  const u=snap.data(),st=u.status||'pending';
+  if(st==='pending'){await signOut(auth);showLogin();authErr('아직 승인 대기 중입니다. 관리자 승인 후 이용할 수 있습니다.');return;}
+  if(st==='rejected'){await signOut(auth);showLogin();authErr('가입이 거절된 계정입니다. 관리자에게 문의하세요.');return;}
+  session={uid:user.uid,id:u.email,name:u.name,team:u.team||'경영기획팀',role:u.role,isAdmin:u.role==='admin',color:u.color||colorFor(u.email),loginAt:nowTime()};
+  await enterApp();
+});
+function nowTime(){return new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});}
+function showLogin(){session=null;data=null;editing=false;document.body.classList.remove('editing','admin');$('#app').classList.add('hidden');$('#loginScreen').classList.remove('hidden');}
+
 async function enterApp(){
   $('#loginScreen').classList.add('hidden');
   $('#app').classList.remove('hidden');
   $('#menuAdmin').classList.toggle('hidden',!session.isAdmin);
   document.body.classList.toggle('admin',!!session.isAdmin);
   await loadShared();
-  applyProfile();renderAll();updatePublishBtn();
-  if(session.isAdmin){
-    refreshPendingBadge();
-    const p=pendingUsers().length;
-    if(p>0)setTimeout(()=>toast(`🔔 가입 승인 요청 ${p}건이 대기 중입니다`),700);
-  }
+  await loadData();
+  applyProfile();renderAll();
+  if(session.isAdmin){await refreshUsers();const p=pendingUsers().length;if(p>0)setTimeout(()=>toast(`🔔 가입 승인 요청 ${p}건이 대기 중입니다`),700);}
   switchView('dashboard');
 }
 function applyProfile(){
@@ -641,7 +654,7 @@ function applyProfile(){
 }
 
 /* logout */
-function logout(){localStorage.removeItem(K_SESSION);location.reload();}
+function logout(){signOut(auth);}
 $('#logoutBtn').onclick=logout;$('#logoutBtn2').onclick=logout;
 
 /* ==================== 뷰 전환 ==================== */
@@ -658,7 +671,7 @@ function switchView(v){
   const names={dashboard:'대시보드',accounts:'계정 연동',admin:'사용자 관리',settings:'설정'};
   $('#crumbCur').textContent=names[v]||'대시보드';
   if(v==='accounts')renderAccounts();
-  if(v==='admin')renderUsers();
+  if(v==='admin')refreshUsers().then(renderUsers);
   window.scrollTo(0,0);
 }
 $('#menuToggle').onclick=()=>$('#sidebar').classList.toggle('open');
@@ -721,8 +734,8 @@ function renderTiles(){
 grid.addEventListener('click',e=>{
   const d=e.target.closest('[data-del]'),m=e.target.closest('[data-mv]');
   if(!(session&&session.isAdmin))return;
-  if(d){e.stopPropagation();const i=+d.dataset.del;if(confirm(`"${shared.tiles[i].name}" 삭제할까요?`)){shared.tiles.splice(i,1);saveSharedDraft();renderAll();toast('삭제되었습니다');}}
-  if(m){e.stopPropagation();const i=+m.dataset.mv;if(i>0){[shared.tiles[i-1],shared.tiles[i]]=[shared.tiles[i],shared.tiles[i-1]];saveSharedDraft();renderTiles();}}
+  if(d){e.stopPropagation();const i=+d.dataset.del;if(confirm(`"${shared.tiles[i].name}" 삭제할까요? (전원에게 반영됩니다)`)){shared.tiles.splice(i,1);renderAll();saveShared().then(ok=>ok&&toast('삭제 · 전원에게 반영됨'));}}
+  if(m){e.stopPropagation();const i=+m.dataset.mv;if(i>0){[shared.tiles[i-1],shared.tiles[i]]=[shared.tiles[i],shared.tiles[i-1]];renderTiles();saveShared();}}
 });
 
 function openSystem(t){
@@ -772,43 +785,9 @@ function toggleEdit(){
   $('#editBanner').classList.toggle('hidden',!editing);
   const admin=session&&session.isAdmin;
   $('#editBannerText').textContent=admin
-    ? '✏️ 편집 모드 · 업무 시스템 타일은 공용(전원 반영)입니다. 편집 후 [공용 설정 발행]을 눌러주세요. 바로가기·일정·공지는 내 개인 설정입니다.'
-    : '✏️ 편집 모드 · 내 바로가기·일정·공지를 편집합니다. (업무 시스템 타일은 관리자만 변경할 수 있습니다)';
-  updatePublishBtn();
+    ? '✏️ 편집 모드 · 업무 시스템 타일 변경은 저장 즉시 전원에게 반영됩니다. 바로가기는 내 개인 설정입니다.'
+    : '✏️ 편집 모드 · 내 바로가기를 편집합니다. (업무 시스템 타일은 관리자만 변경할 수 있습니다)';
   renderTiles();renderQuick();
-}
-/* ---- 공용 설정 발행 ---- */
-function updatePublishBtn(){
-  const btn=$('#publishBtn');if(!btn)return;
-  const admin=session&&session.isAdmin;
-  btn.classList.toggle('hidden',!(admin&&editing));
-  btn.textContent=sharedDirty?'📢 공용 설정 발행 (변경사항 있음)':'📢 공용 설정 발행';
-  btn.classList.toggle('btn-primary',!!sharedDirty);
-  btn.classList.toggle('btn-ghost',!sharedDirty);
-}
-$('#publishBtn').onclick=publishShared;
-function publishShared(){
-  const cfg={version:Date.now(),tiles:shared.tiles};
-  const blob=new Blob([JSON.stringify(cfg,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='config.json';a.click();URL.revokeObjectURL(a.href);
-  modal(`
-    <div class="mh"><h3>📢 공용 설정 발행</h3><button class="x" data-close>×</button></div>
-    <div class="mb" style="font-size:13.5px;line-height:1.8">
-      <p><b>config.json</b> 파일이 다운로드되었습니다. 이 파일을 저장소에 반영하면 <b>모든 사용자</b>에게 새 업무 시스템 타일이 적용됩니다.</p>
-      <p style="margin-top:12px"><b>반영 방법</b></p>
-      <ol style="margin:6px 0 0 18px">
-        <li>다운로드된 <code>config.json</code>을 포탈 폴더에 덮어쓰기<br><span style="color:var(--muted);font-size:12px">C:/Users/SHIMWOOSEOK/Desktop/워크숍 실습1/potal/config.json</span></li>
-        <li>아래 명령으로 배포(푸시)</li>
-      </ol>
-      <pre style="background:var(--bg);padding:12px;border-radius:9px;font-size:12px;overflow:auto;margin-top:8px">git -C "C:/Users/SHIMWOOSEOK/Desktop/워크숍 실습1/potal" commit -am "update config" &amp;&amp; git -C "C:/Users/SHIMWOOSEOK/Desktop/워크숍 실습1/potal" push</pre>
-      <p style="margin-top:12px;color:var(--muted);font-size:12px">1~2분 뒤 <b>https://sitacule.github.io/potal/</b> 에 반영됩니다. 발행 전까지 변경사항은 관리자 화면에서만 보입니다.</p>
-    </div>
-    <div class="mf"><button class="btn btn-ghost" data-discard>변경사항(초안) 폐기</button><span style="flex:1"></span><button class="btn btn-primary" data-close>확인</button></div>`)
-    .querySelector('[data-discard]').onclick=()=>{
-      if(confirm('아직 발행하지 않은 타일 변경사항을 모두 폐기하고 현재 배포본으로 되돌립니다. 계속할까요?')){
-        localStorage.removeItem(K_SHARED_DRAFT);loadShared().then(()=>{renderAll();updatePublishBtn();closeModal();toast('배포본으로 되돌렸습니다');});
-      }
-    };
 }
 function addQuick(){
   const name=prompt('바로가기 이름','');if(!name)return;
@@ -818,8 +797,8 @@ function addQuick(){
 }
 
 $('#resetBtn').onclick=$('#resetBtn2').onclick=()=>{
-  if(confirm('내 포탈 구성을 기본값으로 되돌립니다. 계속할까요?')){
-    data=structuredClone(DEFAULT_DATA);saveData();renderAll();toast('기본값으로 복원했습니다');
+  if(confirm('내 개인 설정(바로가기·계정연동)을 기본값으로 되돌립니다. 계속할까요?')){
+    data={quick:structuredClone(DEFAULT_QUICK),accounts:{},recent:[]};saveData();renderAll();toast('기본값으로 복원했습니다');
   }
 };
 
@@ -852,13 +831,13 @@ function openTileForm(i){
   m.querySelector('#f_col').onclick=e=>{const b=e.target.closest('[data-col]');if(!b)return;formPick.color=b.dataset.col;m.querySelectorAll('#f_col button').forEach(x=>x.classList.toggle('sel',x===b));m.querySelector('#pv_i').style.background=formPick.color;};
   m.querySelector('#f_name').oninput=e=>m.querySelector('#pv_n').textContent=e.target.value||'시스템 이름';
   m.querySelector('#f_desc').oninput=e=>m.querySelector('#pv_d').textContent=e.target.value||'설명';
-  const df=m.querySelector('[data-delf]');if(df)df.onclick=()=>{if(confirm('삭제할까요?')){shared.tiles.splice(editIndex,1);saveSharedDraft();renderAll();closeModal();toast('삭제되었습니다');}};
+  const df=m.querySelector('[data-delf]');if(df)df.onclick=()=>{if(confirm('삭제할까요? (전원에게 반영됩니다)')){shared.tiles.splice(editIndex,1);renderAll();closeModal();saveShared().then(ok=>ok&&toast('삭제 · 전원에게 반영됨'));}};
   m.querySelector('[data-savef]').onclick=()=>{
     const name=m.querySelector('#f_name').value.trim(),url=m.querySelector('#f_url').value.trim();
     if(!name)return toast('이름을 입력하세요');if(!url)return toast('링크(URL)를 입력하세요');
     const d={id:editIndex>=0?shared.tiles[editIndex].id:'t'+Date.now(),name,desc:m.querySelector('#f_desc').value.trim(),icon:formPick.icon,color:formPick.color,url,badge:m.querySelector('#f_badge').value.trim()};
     if(editIndex>=0)shared.tiles[editIndex]=d;else shared.tiles.push(d);
-    saveSharedDraft();renderAll();closeModal();toast(editIndex>=0?'수정되었습니다':'추가되었습니다');
+    renderAll();closeModal();saveShared().then(ok=>ok&&toast((editIndex>=0?'수정':'추가')+' · 전원에게 반영됨'));
   };
 }
 
@@ -893,7 +872,7 @@ function saveAcc(id){
 let adminFilter='pending';
 $$('.atab').forEach(t=>t.onclick=()=>{adminFilter=t.dataset.astatus;$$('.atab').forEach(x=>x.classList.toggle('on',x===t));renderUsers();});
 function ustatus(u){return u.status||'approved';}
-function pendingUsers(){return getUsers().filter(u=>ustatus(u)==='pending');}
+function pendingUsers(){return allUsers.filter(u=>ustatus(u)==='pending');}
 function refreshPendingBadge(){
   const pend=pendingUsers().length;
   const b=$('#mPendCnt');b.textContent=pend;b.style.display=pend?'flex':'none';
@@ -912,14 +891,14 @@ function renderNotifications(){
     el.innerHTML=`<span class="npav">🔔</span><div class="npmain"><div class="npt">${esc(u.name)}님 가입 승인 요청</div><div class="nps">${esc(u.id)}</div></div><button class="npbtn" data-napprove="${u.uid}">승인</button>`;
     body.appendChild(el);
   });
-  body.querySelectorAll('[data-napprove]').forEach(b=>b.onclick=()=>{setUserStatus(b.dataset.napprove,'approved');renderNotifications();});
+  body.querySelectorAll('[data-napprove]').forEach(b=>b.onclick=async()=>{await setUserStatus(b.dataset.napprove,'approved');renderNotifications();});
 }
-$('#notifBtn').onclick=e=>{e.stopPropagation();const p=$('#notifPanel');const willShow=p.classList.contains('hidden');document.querySelectorAll('.notif-panel').forEach(x=>x.classList.add('hidden'));if(willShow){p.classList.remove('hidden');renderNotifications();}};
+$('#notifBtn').onclick=async e=>{e.stopPropagation();const p=$('#notifPanel');const willShow=p.classList.contains('hidden');document.querySelectorAll('.notif-panel').forEach(x=>x.classList.add('hidden'));if(willShow){p.classList.remove('hidden');if(session&&session.isAdmin)await refreshUsers();renderNotifications();}};
 $('#notifAll').onclick=e=>{e.preventDefault();$('#notifPanel').classList.add('hidden');if(session&&session.isAdmin)switchView('admin');else switchView('dashboard');};
 document.addEventListener('click',e=>{if(!e.target.closest('.notif-wrap'))$('#notifPanel').classList.add('hidden');});
 function renderUsers(){
   if(!(session&&session.isAdmin))return;
-  const all=getUsers();
+  const all=allUsers;
   const pend=all.filter(u=>ustatus(u)==='pending'),appr=all.filter(u=>ustatus(u)==='approved');
   $('#cntPending').textContent=pend.length;$('#cntApproved').textContent=appr.length;
   const list=adminFilter==='pending'?pend:adminFilter==='approved'?appr:all;
@@ -949,42 +928,45 @@ function renderUsers(){
   box.querySelectorAll('[data-deluser]').forEach(b=>b.onclick=()=>delUser(b.dataset.deluser));
   box.querySelectorAll('[data-toga]').forEach(b=>b.onclick=()=>toggleAdmin(b.dataset.toga));
 }
-function setUserStatus(uid,status){
-  const us=getUsers(),u=us.find(x=>x.uid===uid);if(!u)return;
-  u.status=status;setUsers(us);renderUsers();refreshPendingBadge();
-  toast(status==='approved'?`${u.name}님을 승인했습니다`:`${u.name}님을 거절했습니다`);
+async function setUserStatus(uid,status){
+  const u=allUsers.find(x=>x.uid===uid);
+  try{await updateDoc(doc(db,'users',uid),{status});}catch(e){return toast('처리 실패 (권한/규칙 확인)');}
+  await refreshUsers();renderUsers();
+  toast(status==='approved'?`${u?u.name:''}님을 승인했습니다`:`${u?u.name:''}님을 거절했습니다`);
 }
-function delUser(uid){
-  const us=getUsers(),u=us.find(x=>x.uid===uid);if(!u)return;
-  if(u.uid===session.uid)return toast('본인 계정은 삭제할 수 없습니다');
-  if(!confirm(`${u.name} (${u.id}) 계정을 삭제할까요?`))return;
-  setUsers(us.filter(x=>x.uid!==uid));localStorage.removeItem(uData(uid));
-  renderUsers();refreshPendingBadge();toast('삭제되었습니다');
+async function delUser(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  if(uid===session.uid)return toast('본인 계정은 삭제할 수 없습니다');
+  if(u.role==='admin')return toast('관리자 계정은 먼저 권한을 해제한 뒤 삭제하세요');
+  if(!confirm(`${u.name} (${u.id}) 계정 정보를 삭제할까요?`))return;
+  try{await deleteDoc(doc(db,'users',uid));await deleteDoc(doc(db,'userdata',uid)).catch(()=>{});}catch(e){return toast('삭제 실패 (권한/규칙 확인)');}
+  await refreshUsers();renderUsers();toast('삭제되었습니다');
 }
-function toggleAdmin(uid){
-  const us=getUsers(),u=us.find(x=>x.uid===uid);if(!u)return;
-  if(u.pinned)return toast('지정된 관리자는 해제할 수 없습니다');
-  u.role=u.role==='admin'?'member':'admin';setUsers(us);renderUsers();
-  toast(u.role==='admin'?`${u.name}님을 관리자로 지정했습니다`:`${u.name}님의 관리자 권한을 해제했습니다`);
+async function toggleAdmin(uid){
+  const u=allUsers.find(x=>x.uid===uid);if(!u)return;
+  if(u.role==='admin'&&await isAdminEmail(u.id))return toast('지정된 관리자는 해제할 수 없습니다');
+  const newRole=u.role==='admin'?'member':'admin';
+  try{await updateDoc(doc(db,'users',uid),{role:newRole});}catch(e){return toast('처리 실패 (권한/규칙 확인)');}
+  await refreshUsers();renderUsers();
+  toast(newRole==='admin'?`${u.name}님을 관리자로 지정했습니다`:`${u.name}님의 관리자 권한을 해제했습니다`);
 }
 
 /* ==================== 설정 ==================== */
-$('#saveProfile').onclick=()=>{
+$('#saveProfile').onclick=async ()=>{
   const name=$('#set_name').value.trim(),team=$('#set_team').value.trim();
   if(!name)return toast('이름을 입력하세요');
   session.name=name;session.team=team||session.team;
-  users=getUsers();const u=users.find(x=>x.uid===session.uid);if(u){u.name=name;u.team=session.team;setUsers(users);}
-  localStorage.setItem(K_SESSION,JSON.stringify(session));
+  try{await updateDoc(doc(db,'users',session.uid),{name:session.name,team:session.team});}catch(e){return toast('저장 실패 (권한/규칙 확인)');}
   applyProfile();toast('프로필이 저장되었습니다');
 };
 $('#exportBtn').onclick=()=>{
   const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='포탈구성_'+session.name+'.json';a.click();URL.revokeObjectURL(a.href);toast('구성을 내보냈습니다');
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='포탈개인설정_'+session.name+'.json';a.click();URL.revokeObjectURL(a.href);toast('내 설정을 내보냈습니다');
 };
 $('#importBtn').onclick=()=>$('#fileInput').click();
 $('#fileInput').onchange=e=>{
   const f=e.target.files[0];if(!f)return;const r=new FileReader();
-  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.tiles||!Array.isArray(d.tiles))throw 0;data={...structuredClone(DEFAULT_DATA),...d};saveData();renderAll();switchView('dashboard');toast('구성을 가져왔습니다');}catch(err){toast('올바른 구성 파일이 아닙니다');}};
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d||!Array.isArray(d.quick))throw 0;data={quick:d.quick,accounts:d.accounts||{},recent:d.recent||[]};saveData();renderAll();switchView('dashboard');toast('설정을 가져왔습니다');}catch(err){toast('올바른 설정 파일이 아닙니다');}};
   r.readAsText(f);e.target.value='';
 };
 
@@ -992,10 +974,10 @@ $('#fileInput').onchange=e=>{
 $('#helpBtn').onclick=()=>modal(`
   <div class="mh"><h3>ℹ️ 사용 안내</h3><button class="x" data-close>×</button></div>
   <div class="mb" style="font-size:13.5px;line-height:1.8">
-    <p><b>1. 개인 로그인</b><br>담당자별로 로그인하면 각자의 대시보드·타일 구성이 따로 저장됩니다.</p>
+    <p><b>1. 로그인</b><br>회사 이메일로 가입하면 관리자 승인 후 이용할 수 있습니다. 계정·설정은 클라우드(Firebase)에 저장되어 어느 PC에서든 동일하게 표시됩니다.</p>
     <p style="margin-top:12px"><b>2. 업무 시스템 열기</b><br>타일을 클릭하면 해당 시스템이 새 탭에서 열립니다. 최근 이용 시스템에 자동 기록됩니다.</p>
-    <p style="margin-top:12px"><b>3. 내 포탈 편집</b><br>[✏️ 내 포탈 편집]으로 타일·일정·공지·바로가기를 추가/수정/삭제할 수 있습니다.</p>
-    <p style="margin-top:12px"><b>4. 계정 연동 (SSO 준비)</b><br>시스템별 로그인 아이디를 저장해 두면, 타일 클릭 시 아이디가 복사되어 빠르게 로그인할 수 있습니다. 향후 회사 SSO 연동 시 완전 자동 로그인으로 확장됩니다.</p>
+    <p style="margin-top:12px"><b>3. 편집</b><br>관리자가 업무 시스템 타일을 편집하면 저장 즉시 전원에게 반영됩니다. 바로가기·계정연동은 개인별로 저장됩니다.</p>
+    <p style="margin-top:12px"><b>4. 계정 연동</b><br>시스템별 로그인 아이디를 저장해 두면, 타일 클릭 시 아이디가 복사되어 빠르게 로그인할 수 있습니다.</p>
   </div>
   <div class="mf"><button class="btn btn-primary" data-close>확인</button></div>`);
 
@@ -1017,11 +999,8 @@ $('#searchInput').addEventListener('keydown',e=>{
 });
 
 /* ==================== 초기화 ==================== */
-(function init(){
-  const s=localStorage.getItem(K_SESSION);
-  if(s){try{session=JSON.parse(s);const u=getUsers().find(x=>x.uid===session.uid);if(u){data=loadData(session.uid);enterApp();return;}}catch(e){}}
-  // 로그인 화면 유지
-})();
+/* 앱 진입/세션 복원은 위의 onAuthStateChanged가 담당합니다.
+   (Firebase Auth가 로그인 상태를 자동 유지 → 새로고침해도 로그인 유지) */
 </script>
 </body>
 </html>

@@ -1,0 +1,52 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function me() { return get(/databases/$(database)/documents/users/$(request.auth.uid)).data; }
+    function hasUserDoc() { return exists(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function isApproved() { return signedIn() && hasUserDoc() && me().status == 'approved'; }
+    function isAdmin() { return signedIn() && hasUserDoc() && me().role == 'admin' && me().status == 'approved'; }
+
+    // 관리자 지정 이메일 (이 파일은 서버 측 규칙이라 외부에 공개되지 않습니다)
+    function adminEmail() { return 'hyunjoon.cho@lotte.net'; }
+    function isAdminSignup() {
+      return request.auth.token.email != null
+        && request.auth.token.email.lower() == adminEmail();
+    }
+
+    // 사용자 문서: 가입/승인/권한
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+
+      // 가입 시 본인 문서 생성 — 관리자 이메일이면 admin/approved, 아니면 member/pending 강제
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.email.lower() == request.auth.token.email.lower()
+        && (
+          (isAdminSignup()  && request.resource.data.role == 'admin'  && request.resource.data.status == 'approved')
+          || (!isAdminSignup() && request.resource.data.role == 'member' && request.resource.data.status == 'pending')
+        );
+
+      // 본인은 이름/소속만 수정 가능(권한·상태 변경 불가). 관리자는 상태·권한 변경 가능.
+      allow update: if signedIn() && (
+        isAdmin()
+        || (request.auth.uid == uid
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.status == resource.data.status)
+      );
+
+      allow delete: if isAdmin();
+    }
+
+    // 개인 설정: 본인만
+    match /userdata/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // 공용 설정(업무 시스템 타일): 승인된 사용자는 읽기, 관리자만 쓰기
+    match /config/{docId} {
+      allow read: if isApproved();
+      allow write: if isAdmin();
+    }
+  }
+}
