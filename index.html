@@ -323,7 +323,6 @@ body.editing .wrow .wdel{display:inline;}
       <div class="lf"><label>비밀번호</label><input id="su_pw" type="password" autocomplete="new-password" placeholder="비밀번호"></div>
       <button class="login-btn" type="submit">가입하고 시작하기</button>
     </form>
-    <div class="login-foot">계정·설정은 Firebase 클라우드에 안전하게 저장되어<br>어느 PC·브라우저에서 로그인해도 동일하게 표시됩니다.</div>
   </div>
 </div>
 
@@ -643,7 +642,7 @@ async function enterApp(){
   switchView('dashboard');
 }
 function applyProfile(){
-  const ini=session.name.slice(0,2);
+  const ini=session.name.slice(0,1);
   $('#tbAv').textContent=ini;$('#tbAv').style.background=session.color;
   $('#tbName').textContent=session.name;$('#tbRole').textContent=session.team;
   $('#greetHi').textContent=`안녕하세요, ${session.name}님 👋`;
@@ -914,7 +913,7 @@ function renderUsers(){
     else if(st==='approved')acts=isMe?`<span style="font-size:12px;color:var(--muted2)">본인 계정</span>`:`<button class="btn btn-ghost btn-sm" data-toga="${u.uid}">${admin?'관리자 해제':'관리자 지정'}</button><button class="btn btn-danger btn-sm" data-deluser="${u.uid}">삭제</button>`;
     else acts=`<button class="btn btn-primary btn-sm" data-approve="${u.uid}">승인으로 변경</button><button class="btn btn-danger btn-sm" data-deluser="${u.uid}">삭제</button>`;
     el.innerHTML=`
-      <div class="uav" style="background:${u.color||'#2563EB'}">${esc((u.name||'?').slice(0,2))}</div>
+      <div class="uav" style="background:${u.color||'#2563EB'}">${esc((u.name||'?').slice(0,1))}</div>
       <div class="uinfo">
         <div class="un">${esc(u.name)} ${admin?'<span class="tag-admin">관리자</span>':''} ${isMe?'<span class="tag-me">나</span>':''}</div>
         <div class="ue">${esc(u.id)} · ${esc(u.team||'')}</div>
