@@ -203,6 +203,21 @@ body.editing.admin .tile .link-badge,body.editing.admin .tile .go{display:none;}
 .tile.add:hover{border-color:var(--blue);color:var(--blue);background:#fff;}
 .tile.add .plus{font-size:34px;font-weight:200;}
 .tile.add .name{font-weight:700;font-size:13px;}
+/* 카테고리 */
+.cat-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:-4px 0 18px;}
+.cat-tab{font-size:13px;font-weight:700;color:var(--muted);background:#fff;border:1px solid var(--border);padding:7px 14px;border-radius:20px;display:inline-flex;align-items:center;gap:6px;transition:.15s;}
+.cat-tab:hover{border-color:#CBD5E1;color:var(--text,#0F172A);}
+.cat-tab .n{font-size:11.5px;font-weight:700;color:var(--muted2);}
+.cat-tab.on{background:var(--blue);border-color:var(--blue);color:#fff;}
+.cat-tab.on .n{color:rgba(255,255,255,.8);}
+.cat-groups{display:flex;flex-wrap:wrap;gap:22px 30px;margin-bottom:30px;}
+.cat-group{min-width:0;max-width:100%;}
+.cat-group .grid{margin-bottom:0;grid-template-columns:repeat(auto-fill,170px);width:calc(var(--n,1)*170px + (var(--n,1) - 1)*16px);max-width:100%;}
+.cat-h{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:800;letter-spacing:-.3px;}
+.cat-h .dot{width:8px;height:8px;border-radius:50%;}
+.cat-h .n{font-size:12px;color:var(--muted2);font-weight:600;}
+.cat-empty{font-size:13px;color:var(--muted2);padding:26px 0 30px;}
+@media(max-width:520px){.cat-group{flex:1 1 100%;}.cat-group .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));width:auto;}.cat-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}.cat-tab{flex:none;}}
 
 /* Widgets */
 .widgets{display:grid;grid-template-columns:minmax(320px,520px);gap:18px;margin-bottom:20px;}
@@ -447,7 +462,8 @@ body.editing .wrow .wdel{display:inline;}
           <span class="sp"></span>
           <button class="link-btn" id="editToggle"><span data-icon="pencil"></span> 내 포탈 편집</button>
         </div>
-        <div class="grid" id="grid"></div>
+        <div class="cat-tabs" id="catTabs" role="tablist" aria-label="업무 시스템 분류"></div>
+        <div id="grid"></div>
 
         <div class="widgets">
           <div class="widget" id="wRecent">
@@ -543,13 +559,33 @@ const db = getFirestore(fbApp);
 const PALETTE=['#2563EB','#1E293B','#EF4444','#10B981','#F59E0B','#8B5CF6','#EC4899','#0D9488','#DD6B20','#3B82F6','#64748B','#059669'];
 const ICONS=['📋','✅','💳','🧾','📝','🎬','🍫','📊','📈','📁','📧','🗓️','👥','💰','🏢','🔧','📎','🔔','🌐','📌','💼','🎯','🧮','📦'];
 const DEFAULT_TILES=[
-  {id:'t1',name:'Work Trace',desc:'팀 업무보고 자동화',icon:'✅',color:'#2563EB',url:'https://mpteam.vercel.app/',badge:''},
-  {id:'t2',name:'HR 주요업무 현황',desc:'보고',icon:'📋',color:'#F59E0B',url:'https://hr-project-master.vercel.app/home',badge:''},
-  {id:'t3',name:'자산 관리',desc:'사내 시설물, 집기 관리',icon:'📦',color:'#8B5CF6',url:'https://asset-lookup-ruby.vercel.app/home',badge:''},
-  {id:'t4',name:'카드사용 Trace',desc:'카드 사용내역 추적',icon:'🧾',color:'#DD6B20',url:'https://sitacule.github.io/card/',badge:''},
-  {id:'t5',name:'재무 대시보드',desc:'재무현황',icon:'📊',color:'#2563EB',url:'',badge:''},
-  {id:'t6',name:'탕비실 간식 주문 요청',desc:'간식주문 의견 취합',icon:'🍫',color:'#2563EB',url:'',badge:''},
+  {id:'t1',name:'Work Trace',desc:'팀 업무보고 자동화',icon:'✅',color:'#2563EB',url:'https://mpteam.vercel.app/',badge:'',cat:'team'},
+  {id:'t2',name:'HR 주요업무 현황',desc:'보고',icon:'📋',color:'#F59E0B',url:'https://hr-project-master.vercel.app/home',badge:'',cat:'hr'},
+  {id:'t3',name:'자산 관리',desc:'사내 시설물, 집기 관리',icon:'📦',color:'#8B5CF6',url:'https://asset-lookup-ruby.vercel.app/home',badge:'',cat:'hr'},
+  {id:'t4',name:'카드사용 Trace',desc:'카드 사용내역 추적',icon:'🧾',color:'#DD6B20',url:'https://sitacule.github.io/card/',badge:'',cat:'fin'},
+  {id:'t5',name:'재무 대시보드',desc:'재무현황',icon:'📊',color:'#2563EB',url:'',badge:'',cat:'fin'},
+  {id:'t6',name:'탕비실 간식 주문 요청',desc:'간식주문 의견 취합',icon:'🍫',color:'#2563EB',url:'',badge:'',cat:'hr'},
 ];
+/* 업무 시스템 분류 (순서 = 화면 순서) */
+const CATEGORIES=[
+  {id:'corp',name:'전사 지원',color:'#2563EB'},
+  {id:'team',name:'팀 공통',color:'#10B981'},
+  {id:'hr',name:'인사/총무',color:'#F59E0B'},
+  {id:'fin',name:'재무',color:'#DD6B20'},
+  {id:'plan',name:'기획',color:'#8B5CF6'},
+];
+const CAT_NONE={id:'',name:'미분류',color:'#94A3B8'};
+/* 분류가 아직 지정되지 않은 기존 타일용 초기 추정 (관리자가 수정·저장하면 그 값이 우선) */
+function guessCat(t){
+  const u=String(t.url||'').toLowerCase(),n=String(t.name||'');
+  if(u.includes('mpteam.vercel.app')||/work\s*trace/i.test(n))return 'team';
+  if(u.includes('hr-project')||u.includes('asset-lookup')||/HR|인사|총무|자산|탕비|간식/.test(n))return 'hr';
+  if(u.includes('/card')||/카드|재무|예산/.test(n))return 'fin';
+  if(u.includes('radar-trace.com')&&!u.includes('audio-news'))return 'plan';
+  if(u.includes('audio-news')||/뉴스/.test(n))return 'corp';
+  return '';
+}
+const catOf=t=>CATEGORIES.find(c=>c.id===(t.cat===undefined?guessCat(t):t.cat))||CAT_NONE;
 const DEFAULT_QUICK=[{name:'그룹웨어 (MOIN)',url:'https://dwp.lotte.net',color:'#2563EB'}];
 
 /* ==================== SVG 아이콘 세트 ==================== */
@@ -774,42 +810,81 @@ function renderStats(){
 }
 
 const grid=$('#grid');
+let catSel=(()=>{try{return localStorage.getItem('portal_cat')||'all';}catch(e){return 'all';}})();
+function tileEl(t,i,canEdit){
+  const acc=data.accounts[t.id];const linked=acc&&acc.loginId&&acc.enabled;
+  const el=document.createElement('div');el.className='tile';
+  el.innerHTML=`
+    <div class="link-badge">
+      ${linked?`<span class="sso">🔐 연동</span>`:''}
+      ${t.badge?`<span class="badge">${esc(t.badge)}</span>`:''}
+    </div>
+    ${canEdit?`<div class="tacts">
+      <button class="mv" data-mv="${i}" title="같은 분류 안에서 앞으로">◀</button>
+      <button class="e" data-edit="${i}" title="수정">✎</button>
+      <button class="d" data-del="${i}" title="삭제">✕</button>
+    </div>`:''}
+    <div class="ico" style="background:${t.color}">${t.icon||'📁'}</div>
+    <div style="flex:1"><div class="name">${esc(t.name)}</div><div class="desc">${esc(t.desc||'')}</div></div>
+    <span class="go">→</span>`;
+  el.onclick=ev=>{
+    if(canEdit){if(!ev.target.closest('button'))openTileForm(i);return;}
+    openSystem(t);
+  };
+  return el;
+}
+function renderCatTabs(){
+  const cnt=id=>shared.tiles.filter(t=>catOf(t).id===id).length;
+  const hasNone=cnt('')>0;
+  const tabs=[{id:'all',name:'전체',n:shared.tiles.length},...CATEGORIES.map(c=>({id:c.id,name:c.name,n:cnt(c.id)})),...(hasNone?[{id:'none',name:CAT_NONE.name,n:cnt('')}]:[])];
+  if(!tabs.some(x=>x.id===catSel))catSel='all';
+  $('#catTabs').innerHTML=tabs.map(x=>`<button type="button" class="cat-tab${x.id===catSel?' on':''}" role="tab" aria-selected="${x.id===catSel}" data-cat="${x.id}">${esc(x.name)}<span class="n">${x.n}</span></button>`).join('');
+}
+$('#catTabs').addEventListener('click',e=>{
+  const b=e.target.closest('[data-cat]');if(!b)return;
+  catSel=b.dataset.cat;try{localStorage.setItem('portal_cat',catSel);}catch(err){}
+  renderTiles();
+});
 function renderTiles(){
+  renderCatTabs();
   grid.innerHTML='';
   const canEdit=editing&&session&&session.isAdmin; // 타일 편집은 관리자만
-  shared.tiles.forEach((t,i)=>{
-    const acc=data.accounts[t.id];const linked=acc&&acc.loginId&&acc.enabled;
-    const el=document.createElement('div');el.className='tile';
-    el.innerHTML=`
-      <div class="link-badge">
-        ${linked?`<span class="sso">🔐 연동</span>`:''}
-        ${t.badge?`<span class="badge">${esc(t.badge)}</span>`:''}
-      </div>
-      ${canEdit?`<div class="tacts">
-        <button class="mv" data-mv="${i}" title="앞으로">◀</button>
-        <button class="e" data-edit="${i}" title="수정">✎</button>
-        <button class="d" data-del="${i}" title="삭제">✕</button>
-      </div>`:''}
-      <div class="ico" style="background:${t.color}">${t.icon||'📁'}</div>
-      <div style="flex:1"><div class="name">${esc(t.name)}</div><div class="desc">${esc(t.desc||'')}</div></div>
-      <span class="go">→</span>`;
-    el.onclick=ev=>{
-      if(canEdit){if(!ev.target.closest('button'))openTileForm(i);return;}
-      openSystem(t);
-    };
-    grid.appendChild(el);
-  });
-  if(canEdit){
+  const addTile=cat=>{
     const add=document.createElement('div');add.className='tile add';
     add.innerHTML='<div class="plus">+</div><div class="name">시스템 추가</div>';
-    add.onclick=()=>openTileForm(-1);grid.appendChild(add);
+    add.onclick=()=>openTileForm(-1,cat);return add;
+  };
+  const gridOf=cat=>{
+    const g=document.createElement('div');g.className='grid';
+    shared.tiles.forEach((t,i)=>{if(cat===null||catOf(t).id===cat)g.appendChild(tileEl(t,i,canEdit));});
+    return g;
+  };
+  if(catSel==='all'){
+    const wrap=document.createElement('div');wrap.className='cat-groups';grid.appendChild(wrap);
+    [...CATEGORIES,CAT_NONE].forEach(c=>{
+      const n=shared.tiles.filter(t=>catOf(t).id===c.id).length;
+      if(!n&&!(canEdit&&c.id))return;
+      const sec=document.createElement('div');sec.className='cat-group';
+      sec.innerHTML=`<div class="cat-h"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}<span class="n">${n}</span></div>`;
+      const g=gridOf(c.id);if(canEdit&&c.id)g.appendChild(addTile(c.id));
+      g.style.setProperty('--n',g.children.length);
+      sec.appendChild(g);wrap.appendChild(sec);
+    });
+    if(!shared.tiles.length&&!canEdit)grid.innerHTML='<div class="cat-empty">등록된 시스템이 없습니다.</div>';
+  }else{
+    const cat=catSel==='none'?'':catSel;
+    const g=gridOf(cat);
+    if(canEdit)g.appendChild(addTile(cat));
+    if(!g.children.length){grid.innerHTML='<div class="cat-empty">이 분류에 등록된 시스템이 없습니다.</div>';}
+    else{g.style.marginBottom='30px';grid.appendChild(g);}
   }
 }
 grid.addEventListener('click',e=>{
-  const d=e.target.closest('[data-del]'),m=e.target.closest('[data-mv]');
+  const d=e.target.closest('[data-del]'),m=e.target.closest('[data-mv]'),ed=e.target.closest('[data-edit]');
   if(!(session&&session.isAdmin))return;
+  if(ed){e.stopPropagation();openTileForm(+ed.dataset.edit);return;}
   if(d){e.stopPropagation();const i=+d.dataset.del;if(confirm(`"${shared.tiles[i].name}" 삭제할까요? (전원에게 반영됩니다)`)){shared.tiles.splice(i,1);renderAll();saveShared().then(ok=>ok&&toast('삭제 · 전원에게 반영됨'));}}
-  if(m){e.stopPropagation();const i=+m.dataset.mv;if(i>0){[shared.tiles[i-1],shared.tiles[i]]=[shared.tiles[i],shared.tiles[i-1]];renderTiles();saveShared();}}
+  if(m){e.stopPropagation();const i=+m.dataset.mv,c=catOf(shared.tiles[i]).id;let j=i-1;while(j>=0&&catOf(shared.tiles[j]).id!==c)j--;if(j>=0){const[x]=shared.tiles.splice(i,1);shared.tiles.splice(j,0,x);renderTiles();saveShared();}}
 });
 
 function openSystem(t){
@@ -929,9 +1004,10 @@ $('#resetBtn').onclick=$('#resetBtn2').onclick=()=>{
 };
 
 /* ==================== 타일 폼 ==================== */
-function openTileForm(i){
+function openTileForm(i,presetCat){
   editIndex=i;
-  const t=i>=0?shared.tiles[i]:{name:'',desc:'',icon:ICONS[0],color:PALETTE[0],url:'',badge:''};
+  const t=i>=0?shared.tiles[i]:{name:'',desc:'',icon:ICONS[0],color:PALETTE[0],url:'',badge:'',cat:presetCat||''};
+  const catOpts=['<option value="">분류 선택</option>',...CATEGORIES.map(c=>`<option value="${c.id}"${c.id===catOf(t).id?' selected':''}>${esc(c.name)}</option>`)].join('');
   formPick={icon:t.icon||ICONS[0],color:t.color||PALETTE[0]};
   const ic=ICONS.map(x=>`<button type="button" data-ic="${x}" class="${x===formPick.icon?'sel':''}">${x}</button>`).join('');
   const co=PALETTE.map(c=>`<button type="button" data-col="${c}" class="${c===formPick.color?'sel':''}" style="background:${c}"></button>`).join('');
@@ -939,6 +1015,7 @@ function openTileForm(i){
     <div class="mh"><h3>${i>=0?'시스템 수정':'시스템 추가'}</h3><button class="x" data-close>×</button></div>
     <div class="mb">
       <div class="fg"><label>이름 *</label><input id="f_name" value="${att(t.name)}" maxlength="20" placeholder="예: 업무체크리스트"></div>
+      <div class="fg"><label>분류 *</label><select id="f_cat">${catOpts}</select></div>
       <div class="fg"><label>설명</label><input id="f_desc" value="${att(t.desc||'')}" maxlength="30" placeholder="예: 팀 업무보고 자동화"></div>
       <div class="fg"><label>링크(URL) *</label><input id="f_url" value="${att(t.url||'')}" placeholder="https://... 또는 ../폴더/index.html"><div class="hint">배포 웹주소 또는 로컬 파일 경로(상대경로)</div></div>
       <div class="row2">
@@ -960,8 +1037,9 @@ function openTileForm(i){
   const df=m.querySelector('[data-delf]');if(df)df.onclick=()=>{if(confirm('삭제할까요? (전원에게 반영됩니다)')){shared.tiles.splice(editIndex,1);renderAll();closeModal();saveShared().then(ok=>ok&&toast('삭제 · 전원에게 반영됨'));}};
   m.querySelector('[data-savef]').onclick=()=>{
     const name=m.querySelector('#f_name').value.trim(),url=m.querySelector('#f_url').value.trim();
-    if(!name)return toast('이름을 입력하세요');if(!url)return toast('링크(URL)를 입력하세요');
-    const d={id:editIndex>=0?shared.tiles[editIndex].id:'t'+Date.now(),name,desc:m.querySelector('#f_desc').value.trim(),icon:formPick.icon,color:formPick.color,url,badge:m.querySelector('#f_badge').value.trim()};
+    const cat=m.querySelector('#f_cat').value;
+    if(!name)return toast('이름을 입력하세요');if(!cat)return toast('분류를 선택하세요');if(!url)return toast('링크(URL)를 입력하세요');
+    const d={id:editIndex>=0?shared.tiles[editIndex].id:'t'+Date.now(),name,desc:m.querySelector('#f_desc').value.trim(),icon:formPick.icon,color:formPick.color,url,badge:m.querySelector('#f_badge').value.trim(),cat};
     if(editIndex>=0)shared.tiles[editIndex]=d;else shared.tiles.push(d);
     renderAll();closeModal();saveShared().then(ok=>ok&&toast((editIndex>=0?'수정':'추가')+' · 전원에게 반영됨'));
   };
