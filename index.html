@@ -210,14 +210,15 @@ body.editing.admin .tile .link-badge,body.editing.admin .tile .go{display:none;}
 .cat-tab .n{font-size:11.5px;font-weight:700;color:var(--muted2);}
 .cat-tab.on{background:var(--blue);border-color:var(--blue);color:#fff;}
 .cat-tab.on .n{color:rgba(255,255,255,.8);}
-.cat-groups{display:flex;flex-wrap:wrap;gap:22px 30px;margin-bottom:30px;}
-.cat-group{min-width:0;max-width:100%;}
-.cat-group .grid{margin-bottom:0;grid-template-columns:repeat(auto-fill,170px);width:calc(var(--n,1)*170px + (var(--n,1) - 1)*16px);max-width:100%;}
-.cat-h{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:14px;font-weight:800;letter-spacing:-.3px;}
-.cat-h .dot{width:8px;height:8px;border-radius:50%;}
+.cat-groups{display:flex;flex-direction:column;gap:14px;margin-bottom:30px;}
+.cat-group{background:rgba(255,255,255,.55);border:1px solid var(--border);border-left:4px solid var(--cc,#94A3B8);border-radius:var(--radius);padding:14px 16px 16px;}
+.cat-group .grid{margin-bottom:0;}
+.cat-h{display:flex;align-items:center;gap:8px;margin-bottom:12px;font-size:15px;font-weight:800;letter-spacing:-.3px;color:var(--text);}
+.cat-h .n{background:#fff;border:1px solid var(--border);padding:0 8px;border-radius:20px;}
+.cat-h .dot{width:9px;height:9px;border-radius:50%;}
 .cat-h .n{font-size:12px;color:var(--muted2);font-weight:600;}
 .cat-empty{font-size:13px;color:var(--muted2);padding:26px 0 30px;}
-@media(max-width:520px){.cat-group{flex:1 1 100%;}.cat-group .grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));width:auto;}.cat-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}.cat-tab{flex:none;}}
+@media(max-width:520px){.cat-group{padding:12px;}.cat-tabs{flex-wrap:nowrap;overflow-x:auto;padding-bottom:4px;scrollbar-width:none;}.cat-tab{flex:none;}}
 
 /* Widgets */
 .widgets{display:grid;grid-template-columns:minmax(320px,520px);gap:18px;margin-bottom:20px;}
@@ -568,11 +569,11 @@ const DEFAULT_TILES=[
 ];
 /* 업무 시스템 분류 (순서 = 화면 순서) */
 const CATEGORIES=[
-  {id:'corp',name:'전사 지원',color:'#2563EB'},
   {id:'team',name:'팀 공통',color:'#10B981'},
   {id:'hr',name:'인사/총무',color:'#F59E0B'},
   {id:'fin',name:'재무',color:'#DD6B20'},
   {id:'plan',name:'기획',color:'#8B5CF6'},
+  {id:'corp',name:'전사 지원',color:'#2563EB'},
 ];
 const CAT_NONE={id:'',name:'미분류',color:'#94A3B8'};
 /* 분류가 아직 지정되지 않은 기존 타일용 초기 추정 (관리자가 수정·저장하면 그 값이 우선) */
@@ -864,10 +865,9 @@ function renderTiles(){
     [...CATEGORIES,CAT_NONE].forEach(c=>{
       const n=shared.tiles.filter(t=>catOf(t).id===c.id).length;
       if(!n&&!(canEdit&&c.id))return;
-      const sec=document.createElement('div');sec.className='cat-group';
+      const sec=document.createElement('div');sec.className='cat-group';sec.style.setProperty('--cc',c.color);
       sec.innerHTML=`<div class="cat-h"><span class="dot" style="background:${c.color}"></span>${esc(c.name)}<span class="n">${n}</span></div>`;
       const g=gridOf(c.id);if(canEdit&&c.id)g.appendChild(addTile(c.id));
-      g.style.setProperty('--n',g.children.length);
       sec.appendChild(g);wrap.appendChild(sec);
     });
     if(!shared.tiles.length&&!canEdit)grid.innerHTML='<div class="cat-empty">등록된 시스템이 없습니다.</div>';
