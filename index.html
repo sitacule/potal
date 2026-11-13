@@ -841,12 +841,14 @@ function openSystem(t){
    연동을 지원하도록 고친 사이트만 여기에 넣습니다. (host → 열 주소를 만드는 함수) */
 const SSO_SITES={
   'mpteam.vercel.app':(u,tok)=>{u.hash='sso='+tok;return u.href;},                                   // Work Trace
-  'report.radar-trace.com':(u,tok)=>u.origin+'/sso'+(u.pathname!=='/'?'?next='+encodeURIComponent(u.pathname):'')+'#t='+tok  // Report Trace
+  'report.radar-trace.com':(u,tok)=>u.origin+'/sso'+(u.pathname!=='/'?'?next='+encodeURIComponent(u.pathname):'')+'#t='+tok,  // Report Trace
+  'sitacule.github.io/card':(u,tok)=>{u.hash='sso='+tok;return u.href;}                             // 법인카드 Trace (api/card-sso.js 중계)
 };
 function ssoTarget(url){
   let u;try{u=new URL(url,location.href);}catch(e){return null;}
   if(u.protocol!=='https:')return null;
-  const f=SSO_SITES[u.host];return f?(tok=>f(u,tok)):null;
+  const seg=u.pathname.split('/')[1]||'';   // 같은 호스트의 여러 사이트(github.io)는 첫 경로까지 구분
+  const f=SSO_SITES[u.host+'/'+seg]||SSO_SITES[u.host];return f?(tok=>f(u,tok)):null;
 }
 
 function renderQuick(){
