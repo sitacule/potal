@@ -60,12 +60,11 @@ svg.ic-svg{display:block;stroke-width:1.9;width:19px;height:19px;}
 .lf input,.lf select{width:100%;padding:11px 13px;border:1px solid var(--border);border-radius:10px;font-size:14px;outline:none;transition:.15s;background:#fff;}
 .lf input:focus,.lf select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.14);}
 .login-btn{width:100%;padding:12px;border-radius:10px;background:var(--blue);color:#fff;font-weight:800;font-size:15px;transition:.15s;margin-top:6px;}
-.login-help{text-align:center;margin-top:16px;}
-.login-help a{font-size:12.5px;color:var(--muted);font-weight:600;transition:.15s;}
-.login-help a:hover{color:var(--blue);text-decoration:underline;}
 .login-btn:hover{background:var(--blue-dark);}
 .login-err{background:var(--red-light);color:var(--red);font-size:12.5px;font-weight:600;padding:9px 12px;border-radius:9px;margin-bottom:14px;}
 .login-err.ok{background:var(--green-light);color:#047857;}
+.login-link{display:block;margin:12px auto 0;background:none;border:0;color:var(--muted2);font-size:12.5px;cursor:pointer;text-decoration:underline;text-underline-offset:3px;}
+.login-link:hover{color:var(--blue);}
 .login-foot{margin-top:18px;font-size:11.5px;color:var(--muted2);text-align:center;line-height:1.6;}
 
 /* ===================== APP SHELL ===================== */
@@ -357,7 +356,7 @@ body.editing .wrow .wdel{display:inline;}
       <div class="lf"><label>회사 이메일</label><input id="li_id" type="email" autocomplete="username" placeholder="name@lotte.net"></div>
       <div class="lf"><label>비밀번호</label><input id="li_pw" type="password" autocomplete="current-password" placeholder="비밀번호 입력"></div>
       <button class="login-btn" type="submit">로그인</button>
-      <div class="login-help"><a href="#" id="resetPwLink">비밀번호를 잊으셨나요?</a></div>
+      <button class="login-link" type="button" id="forgotPw">비밀번호를 잊으셨나요?</button>
     </form>
     <!-- signup form -->
     <form id="formSignup" class="hidden">
@@ -680,16 +679,15 @@ $('#formLogin').onsubmit=async ev=>{
   catch(e){authErr(mapAuthError(e.code));}
   finally{if(btn)btn.disabled=false;}
 };
-/* 비밀번호 재설정 메일 발송 */
-$('#resetPwLink').onclick=async e=>{
-  e.preventDefault();
+
+/* 비밀번호 재설정 메일 */
+$('#forgotPw').onclick=async()=>{
   const id=$('#li_id').value.trim().toLowerCase();
-  if(!id)return authErr('재설정할 회사 이메일을 위에 먼저 입력하세요.');
-  if(!isEmail(id))return authErr('올바른 회사 이메일 주소를 입력하세요.');
-  try{
-    await sendPasswordResetEmail(auth,id);
-    authErr('✅ 비밀번호 재설정 메일을 '+id+' 로 보냈습니다. 메일함(스팸함 포함)에서 링크를 눌러 새 비밀번호를 설정하세요.',true);
-  }catch(err){authErr(mapAuthError(err.code));}
+  if(!isEmail(id)){authErr('회사 이메일을 입력한 뒤 다시 눌러 주세요.');$('#li_id').focus();return;}
+  const btn=$('#forgotPw');btn.disabled=true;
+  try{await sendPasswordResetEmail(auth,id);authErr('✅ '+id+' 로 비밀번호 재설정 메일을 보냈습니다. (가입된 이메일인 경우) 메일함과 스팸함을 확인하세요.',true);}
+  catch(e){authErr(mapAuthError(e.code));}
+  finally{btn.disabled=false;}
 };
 
 /* 인증 상태 감시 — 앱 진입의 단일 관문 */
@@ -824,7 +822,31 @@ function openSystem(t){
     try{navigator.clipboard?.writeText(acc.loginId);}catch(e){}
     toast(`🔐 ${t.name} · 아이디(${acc.loginId}) 복사됨 → 붙여넣기(Ctrl+V)`);
   }
+  const sso=ssoTarget(t.url);
+  if(sso&&auth.currentUser){
+    // 팝업 차단을 피하려고 창을 먼저 열고, 포탈 로그인 확인증(ID 토큰)을 받은 뒤 이동
+    const w=window.open('about:blank','_blank');
+    if(!w){toast('팝업이 차단되었습니다. 브라우저에서 이 사이트의 팝업을 허용해 주세요.');return;}
+    try{w.opener=null;}catch(e){}
+    auth.currentUser.getIdToken().then(tok=>{w.location.replace(sso(tok));})
+      .catch(()=>{w.location.replace(t.url);toast('연동 로그인 정보를 받지 못해 일반 로그인 화면으로 엽니다');});
+    return;
+  }
   window.open(t.url,'_blank','noopener');
+}
+
+/* ==================== 업무 사이트 연동 로그인(SSO) ====================
+   포탈 로그인 확인증(Firebase ID 토큰, 1시간 유효)을 주소의 # 뒤에 붙여 엽니다.
+   # 뒤는 서버로 전송되지 않으며, 받는 사이트가 즉시 주소에서 지웁니다.
+   연동을 지원하도록 고친 사이트만 여기에 넣습니다. (host → 열 주소를 만드는 함수) */
+const SSO_SITES={
+  'mpteam.vercel.app':(u,tok)=>{u.hash='sso='+tok;return u.href;},                                   // Work Trace
+  'report.radar-trace.com':(u,tok)=>u.origin+'/sso'+(u.pathname!=='/'?'?next='+encodeURIComponent(u.pathname):'')+'#t='+tok  // Report Trace
+};
+function ssoTarget(url){
+  let u;try{u=new URL(url,location.href);}catch(e){return null;}
+  if(u.protocol!=='https:')return null;
+  const f=SSO_SITES[u.host];return f?(tok=>f(u,tok)):null;
 }
 
 function renderQuick(){
