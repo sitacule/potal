@@ -887,8 +887,36 @@ grid.addEventListener('click',e=>{
   if(m){e.stopPropagation();const i=+m.dataset.mv,c=catOf(shared.tiles[i]).id;let j=i-1;while(j>=0&&catOf(shared.tiles[j]).id!==c)j--;if(j>=0){const[x]=shared.tiles.splice(i,1);shared.tiles.splice(j,0,x);renderTiles();saveShared();}}
 });
 
+/* 공유 폴더·내 PC 파일 경로 (file://, \\서버\...) → 탐색기용 경로. 웹 주소면 null */
+function localPath(url){
+  const u=String(url||'').trim();
+  if(/^\\\\/.test(u))return u;                                   // 이미 \\서버\경로
+  if(/^[A-Za-z]:[\\/]/.test(u))return u.replace(/\//g,'\\');      // C:\...
+  if(!/^file:/i.test(u))return null;
+  let r=u.replace(/^file:\/*/i,'');
+  try{r=decodeURIComponent(r);}catch(e){}
+  r=r.replace(/\//g,'\\');
+  return /^[A-Za-z]:\\/.test(r)?r:'\\\\'+r;                      // 드라이브 문자가 없으면 공유 폴더
+}
+function openLocalPath(t,path){
+  try{navigator.clipboard?.writeText(path);}catch(e){}
+  const m=modal(`
+    <div class="mh"><h3>${esc(t.name)}</h3><button class="x" data-close>×</button></div>
+    <div class="mb">
+      <p style="font-size:13.5px;line-height:1.6;margin-bottom:12px">이 시스템은 회사 공유 폴더의 파일이라 웹 포탈에서 바로 열 수 없습니다 (브라우저 보안 제한).<br>
+      아래 경로를 <b>복사했습니다.</b> 회사 PC에서 <b>파일 탐색기 주소창</b>(또는 <b>Win+R</b>)에 붙여넣고(Ctrl+V) Enter를 누르세요.</p>
+      <div class="fg"><label>경로</label><input id="lp_path" readonly value="${att(path)}"></div>
+      <div class="hint" style="font-size:12px;color:var(--muted2)">회사 네트워크(사내망·VPN)에 연결된 PC에서만 열립니다.</div>
+    </div>
+    <div class="mf"><span style="flex:1"></span><button class="btn btn-ghost" data-close>닫기</button><button class="btn btn-primary" id="lp_copy">경로 다시 복사</button></div>`);
+  const inp=m.querySelector('#lp_path');inp.onfocus=()=>inp.select();
+  m.querySelector('#lp_copy').onclick=async()=>{
+    try{await navigator.clipboard.writeText(path);toast('경로를 복사했습니다');}
+    catch(e){inp.focus();inp.select();try{document.execCommand('copy');toast('경로를 복사했습니다');}catch(err){toast('Ctrl+C로 복사하세요');}}
+  };
+}
 function openSystem(t){
-  if(!t.url)return toast('링크가 설정되지 않았습니다');
+  if(!t.url||/^\.{1,2}\/?$/.test(String(t.url).trim()))return toast('아직 링크가 준비되지 않은 시스템입니다');
   // 최근 이용 기록
   data.recent=[t.id,...data.recent.filter(x=>x!==t.id)].slice(0,5);saveData();renderRecent();
   const acc=data.accounts[t.id];
@@ -897,6 +925,8 @@ function openSystem(t){
     try{navigator.clipboard?.writeText(acc.loginId);}catch(e){}
     toast(`🔐 ${t.name} · 아이디(${acc.loginId}) 복사됨 → 붙여넣기(Ctrl+V)`);
   }
+  const lp=localPath(t.url);
+  if(lp)return openLocalPath(t,lp);
   const sso=ssoTarget(t.url);
   if(sso&&auth.currentUser){
     // 팝업 차단을 피하려고 창을 먼저 열고, 포탈 로그인 확인증(ID 토큰)을 받은 뒤 이동
@@ -1017,7 +1047,7 @@ function openTileForm(i,presetCat){
       <div class="fg"><label>이름 *</label><input id="f_name" value="${att(t.name)}" maxlength="20" placeholder="예: 업무체크리스트"></div>
       <div class="fg"><label>분류 *</label><select id="f_cat">${catOpts}</select></div>
       <div class="fg"><label>설명</label><input id="f_desc" value="${att(t.desc||'')}" maxlength="30" placeholder="예: 팀 업무보고 자동화"></div>
-      <div class="fg"><label>링크(URL) *</label><input id="f_url" value="${att(t.url||'')}" placeholder="https://... 또는 ../폴더/index.html"><div class="hint">배포 웹주소 또는 로컬 파일 경로(상대경로)</div></div>
+      <div class="fg"><label>링크(URL) *</label><input id="f_url" value="${att(t.url||'')}" placeholder="https://... 또는 \\서버\공유폴더\index.html"><div class="hint">웹 주소, 또는 공유 폴더 경로(누르면 경로 복사 안내가 뜸)</div></div>
       <div class="row2">
         <div class="fg"><label>알림 배지(선택)</label><input id="f_badge" value="${att(t.badge||'')}" maxlength="4" placeholder="예: N, 3"></div>
         <div class="fg"><label>색상</label><div class="color-picker" id="f_col">${co}</div></div>
